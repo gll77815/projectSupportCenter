@@ -1,0 +1,1316 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>驾驶舱 - 履约协同平台</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        indigo: { 50: '#eef2ff', 500: '#6366f1', 600: '#4f46e5' },
+                        slate: { 50: '#f8fafc', 100: '#f1f5f9', 200: '#e2e8f0', 300: '#cbd5e1', 800: '#1e293b' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #F4F7FE; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .page-section { display: none; animation: fadeIn 0.3s ease-in-out; }
+        .page-section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* 导航选中样式 */
+        .nav-item.active { background-color: #eef2ff; color: #4f46e5; border-right: 3px solid #4f46e5; }
+        .center-nav.active { background-color: #eef2ff; color: #4f46e5; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+
+        /* 卡片悬停动画 */
+        .card-hover { transition: all 0.3s ease; }
+        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); }
+        
+        /* 卡片选中状态 */
+        .efficiency-card.active { border: 2px solid #4f46e5; background-color: #f8faff; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); }
+        
+        /* 按钮交互效果 */
+        .btn-primary { transition: all 0.3s ease; }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.3); }
+        
+        /* 平滑滚动 */
+        html { scroll-behavior: smooth; }
+        
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            .grid-cols-3 { grid-template-columns: 1fr; }
+            .grid-cols-2 { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body class="text-slate-600 h-screen flex flex-col overflow-hidden font-sans">
+    <div class="flex-1 overflow-y-auto p-6 relative scroll-smooth">
+        <div id="dashboard" class="page-section active max-w-[1600px] mx-auto space-y-6 pb-20 relative">
+            <!-- 滑块浮窗组件 -->
+            <!-- <div class="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 bg-white rounded-full shadow-md border border-slate-100 px-1 py-1 w-full max-w-md">
+                <div class="flex items-center gap-1 justify-center">
+                    <button id="business-status-btn" class="px-6 py-2 rounded-full text-sm font-medium transition-all duration-300 bg-indigo-600 text-white shadow-sm shadow-indigo-100" onclick="scrollToSection('business-status')">
+                        业务态势
+                    </button>
+                    <button id="decision-meeting-btn" class="px-6 py-2 rounded-full text-sm font-medium transition-all duration-300 text-slate-600 hover:bg-slate-50" onclick="scrollToSection('decision-meeting')">
+                        决策会议
+                    </button>
+                </div>
+            </div> -->
+            <!-- 业务态势区域 -->
+            <div id="business-status" class="space-y-6">
+                <!-- 创效态势 -->
+                <div class="space-y-2">
+                    <h2 class="text-xl font-bold text-slate-800">创效态势</h2>
+                    <div class="flex flex-col lg:flex-row gap-6">
+                        <!-- 创效态势卡片 -->
+                        <div class="lg:w-[35%]">
+                            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-1 gap-4">
+                                <!-- 人均产值提升率卡片（已有保持不变） -->
+                                <div class="bg-white rounded-2xl sm:p-3 md:p-4 lg:p-5 xl:p-6 shadow-sm border border-slate-100 relative group hover:shadow-md transition-all duration-300 card-hover efficiency-card" data-index="0">
+                                    <div class="absolute sm:top-3 sm:right-3 md:top-4 md:right-4 lg:top-5 lg:right-5 xl:top-6 xl:right-6 text-blue-100 group-hover:text-blue-600 transition-all duration-300"><i data-lucide="users" class="sm:w-4 sm:h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 xl:w-7 xl:h-7"></i></div>
+                                    <div class="flex flex-col">
+                                        <span class="text-slate-500 text-xs font-medium mb-2">人均产值提升率</span>
+                                        <h3 class="text-2xl font-bold text-slate-800 mb-2">12.4%</h3>
+                                        <div class="flex items-center gap-1 text-xs">
+                                            <span class="text-emerald-500 font-medium flex items-center"><i data-lucide="arrow-up-right" class="w-3 h-3 mr-1"></i> +5.2%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- 一级节点完成率卡片 -->
+                                <div class="bg-white rounded-2xl sm:p-3 md:p-4 lg:p-5 xl:p-6 shadow-sm border border-slate-100 relative group hover:shadow-md transition-all duration-300 card-hover efficiency-card" data-index="1">
+                                    <div class="absolute sm:top-3 sm:right-3 md:top-4 md:right-4 lg:top-5 lg:right-5 xl:top-6 xl:right-6 text-green-100 group-hover:text-green-600 transition-all duration-300"><i data-lucide="check-circle" class="sm:w-4 sm:h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 xl:w-7 xl:h-7"></i></div>
+                                    <div class="flex flex-col">
+                                        <span class="text-slate-500 text-xs font-medium mb-2">一级节点完成率</span>
+                                        <h3 class="text-2xl font-bold text-slate-800 mb-2">88.5%</h3>
+                                        <div class="flex items-center gap-1 text-xs">
+                                            <span class="text-emerald-500 font-medium flex items-center"><i data-lucide="arrow-up-right" class="w-3 h-3 mr-1"></i> +3.1%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- 设计创效率卡片 -->
+                                <div class="bg-white rounded-2xl sm:p-3 md:p-4 lg:p-5 xl:p-6 shadow-sm border border-slate-100 relative group hover:shadow-md transition-all duration-300 card-hover efficiency-card" data-index="2">
+                                    <div class="absolute sm:top-3 sm:right-3 md:top-4 md:right-4 lg:top-5 lg:right-5 xl:top-6 xl:right-6 text-purple-100 group-hover:text-purple-600 transition-all duration-300"><i data-lucide="palette" class="sm:w-4 sm:h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 xl:w-7 xl:h-7"></i></div>
+                                    <div class="flex flex-col">
+                                        <span class="text-slate-500 text-xs font-medium mb-2">设计创效率</span>
+                                        <h3 class="text-2xl font-bold text-slate-800 mb-2">76.2%</h3>
+                                        <div class="flex items-center gap-1 text-xs">
+                                            <span class="text-emerald-500 font-medium flex items-center"><i data-lucide="arrow-up-right" class="w-3 h-3 mr-1"></i> +2.8%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- 单采成本降低率卡片 -->
+                                <div class="bg-white rounded-2xl sm:p-3 md:p-4 lg:p-5 xl:p-6 shadow-sm border border-slate-100 relative group hover:shadow-md transition-all duration-300 card-hover efficiency-card" data-index="3">
+                                    <div class="absolute sm:top-3 sm:right-3 md:top-4 md:right-4 lg:top-5 lg:right-5 xl:top-6 xl:right-6 text-orange-100 group-hover:text-orange-600 transition-all duration-300"><i data-lucide="dollar-sign" class="sm:w-4 sm:h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 xl:w-7 xl:h-7"></i></div>
+                                    <div class="flex flex-col">
+                                        <span class="text-slate-500 text-xs font-medium mb-2">单采成本降低率</span>
+                                        <h3 class="text-2xl font-bold text-slate-800 mb-2">15.8%</h3>
+                                        <div class="flex items-center gap-1 text-xs">
+                                            <span class="text-emerald-500 font-medium flex items-center"><i data-lucide="arrow-up-right" class="w-3 h-3 mr-1"></i> +4.3%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- 结算核对量差效益率卡片 -->
+                                <div class="bg-white rounded-2xl sm:p-3 md:p-4 lg:p-5 xl:p-6 shadow-sm border border-slate-100 relative group hover:shadow-md transition-all duration-300 card-hover efficiency-card" data-index="4">
+                                    <div class="absolute sm:top-3 sm:right-3 md:top-4 md:right-4 lg:top-5 lg:right-5 xl:top-6 xl:right-6 text-indigo-100 group-hover:text-indigo-600 transition-all duration-300"><i data-lucide="calculator" class="sm:w-4 sm:h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 xl:w-7 xl:h-7"></i></div>
+                                    <div class="flex flex-col">
+                                        <span class="text-slate-500 text-xs font-medium mb-2">结算核对量差效益率</span>
+                                        <h3 class="text-2xl font-bold text-slate-800 mb-2">9.2%</h3>
+                                        <div class="flex items-center gap-1 text-xs">
+                                            <span class="text-emerald-500 font-medium flex items-center"><i data-lucide="arrow-up-right" class="w-3 h-3 mr-1"></i> +1.5%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- 创效态势趋势图 -->
+                        <div class="lg:w-[65%]">
+                            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 relative group h-full">
+                                <div class="flex justify-between items-center mb-6">
+                                    <h3 id="efficiencyChartTitle" class="font-bold text-lg text-slate-800">服务项目人均产值趋势</h3>
+                                </div>
+                                <div class="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button onclick="navigateTo('performance.html')" class="text-indigo-600 hover:text-indigo-700 text-xs font-medium flex items-center gap-1">
+                                        查看更多 <i data-lucide="chevron-right" class="w-3 h-3"></i>
+                                    </button>
+                                </div>
+                                <div class="h-[300px] w-full p-4 mb-4">
+                                    <canvas id="efficiencyChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 服务态势 -->
+                <div class="space-y-2">
+                    <h2 class="text-xl font-bold text-slate-800">服务态势</h2>
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- 服务态势卡片 -->
+                        <div class="lg:col-span-1">
+                            <div class="grid grid-cols-1 gap-4">
+                                <!-- 任务超期率卡片 -->
+                                <div class="bg-white rounded-2xl sm:p-3 md:p-4 lg:p-5 xl:p-6 shadow-sm border border-slate-100 relative group hover:shadow-md transition-all duration-300 card-hover">
+                                    <div class="absolute sm:top-3 sm:right-3 md:top-4 md:right-4 lg:top-5 lg:right-5 xl:top-6 xl:right-6 text-red-100 group-hover:text-red-600 transition-all duration-300"><i data-lucide="clock" class="sm:w-4 sm:h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 xl:w-7 xl:h-7"></i></div>
+                                    <div class="flex flex-col">
+                                        <span class="text-slate-500 text-xs font-medium mb-2">任务超期率</span>
+                                        <h3 class="text-2xl font-bold text-slate-800 mb-2">8.2%</h3>
+                                        <div class="flex items-center gap-1 text-xs">
+                                            <span class="text-red-500 font-medium flex items-center"><i data-lucide="arrow-up-right" class="w-3 h-3 mr-1"></i> +1.5%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- 服务满意度卡片（已有保持不变） -->
+                                <div class="bg-white rounded-2xl sm:p-3 md:p-4 lg:p-5 xl:p-6 shadow-sm border border-slate-100 relative group hover:shadow-md transition-all duration-300 card-hover">
+                                    <div class="absolute sm:top-3 sm:right-3 md:top-4 md:right-4 lg:top-5 lg:right-5 xl:top-6 xl:right-6 text-yellow-100 group-hover:text-yellow-500 transition-all duration-300"><i data-lucide="star" class="sm:w-4 sm:h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 xl:w-7 xl:h-7"></i></div>
+                                    <div class="flex flex-col">
+                                        <span class="text-slate-500 text-xs font-medium mb-2">服务满意度</span>
+                                        <h3 class="text-2xl font-bold text-slate-800 mb-2">4.8</h3>
+                                        <div class="flex items-center gap-1 text-xs">
+                                            <span class="text-emerald-500 font-medium flex items-center"><i data-lucide="arrow-up-right" class="w-3 h-3 mr-1"></i> +0.1</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- 服务态势统计 -->
+                        <div class="lg:col-span-2">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <!-- 任务状态统计（已有保持不变） -->
+                                <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex flex-col relative group h-auto min-h-[340px]">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <h3 class="font-bold text-base text-slate-800">任务状态统计</h3>
+                                    </div>
+                                    <div class="flex-1 relative flex flex-col items-center justify-center">
+                                        <div class="h-[180px] w-[180px] relative mb-3">
+                                            <canvas id="taskStatusChart"></canvas>
+                                            <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                                <span class="text-3xl font-bold text-slate-800">100</span>
+                                                <span class="text-xs text-slate-400 mt-1">任务总数</span>
+                                            </div>
+                                        </div>
+                                        <div class="grid grid-cols-2 gap-x-6 gap-y-2 mt-3 w-full px-4">
+                                            <div class="flex items-center justify-between">
+                                                <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-[#4F46E5]"></span><span class="text-sm text-slate-500">进行中</span></div>
+                                                <span class="text-sm font-bold text-slate-800">45</span>
+                                            </div>
+                                            <div class="flex items-center justify-between">
+                                                <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-[#fbbf24]"></span><span class="text-sm text-slate-500">待确认</span></div>
+                                                <span class="text-sm font-bold text-slate-800">12</span>
+                                            </div>
+                                            <div class="flex items-center justify-between">
+                                                <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-[#10B981]"></span><span class="text-sm text-slate-500">待评价</span></div>
+                                                <span class="text-sm font-bold text-slate-800">20</span>
+                                            </div>
+                                            <div class="flex items-center justify-between">
+                                                <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-[#94a3b8]"></span><span class="text-sm text-slate-500">已归档</span></div>
+                                                <span class="text-sm font-bold text-slate-800">23</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- 支持中心满意度矩阵 - 矩形树图 -->
+                                <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 relative group h-auto min-h-[340px]">
+                                    <div class="flex justify-between items-center mb-3">
+                                        <h3 class="font-bold text-base text-slate-800">支持中心满意度矩阵</h3>
+                                        <span class="text-xs text-slate-400">矩形树图</span>
+                                    </div>
+                                    <div id="satisfactionMatrix" class="w-full h-[240px]">
+                                        <!-- 矩形树图结构 -->
+                                        <div class="grid grid-cols-4 gap-2 h-full">
+                                            <!-- 第一行 -->
+                                            <div class="col-span-2 bg-blue-800 text-white rounded-lg flex items-center justify-center font-medium text-sm">行政部</div>
+                                            <div class="col-span-1 bg-red-600 text-white rounded-lg flex items-center justify-center font-medium text-sm">推广部</div>
+                                            <div class="col-span-1 grid grid-rows-2 gap-2">
+                                                <div class="bg-purple-400 text-white rounded-lg flex items-center justify-center font-medium text-sm">广告部</div>
+                                                <div class="bg-blue-500 text-white rounded-lg flex items-center justify-center font-medium text-sm">公关部</div>
+                                            </div>
+                                            <!-- 第二行 -->
+                                            <div class="col-span-2 bg-orange-600 text-white rounded-lg flex items-center justify-center font-medium text-sm">人事部</div>
+                                            <div class="col-span-2 bg-purple-600 text-white rounded-lg flex items-center justify-center font-medium text-sm">企划部</div>
+                                            <!-- 第三行 -->
+                                            <div class="col-span-1 bg-yellow-500 text-white rounded-lg flex items-center justify-center font-medium text-sm">职能总监</div>
+                                            <div class="col-span-1 bg-teal-500 text-white rounded-lg flex items-center justify-center font-medium text-sm">客服部</div>
+                                            <div class="col-span-1 bg-blue-400 text-white rounded-lg flex items-center justify-center font-medium text-sm">售后部</div>
+                                            <div class="col-span-1 bg-blue-900 text-white rounded-lg flex items-center justify-center font-medium text-sm">市场总监</div>
+                                            <!-- 第四行 -->
+                                            <div class="col-span-1 bg-green-600 text-white rounded-lg flex items-center justify-center font-medium text-sm">运营总监</div>
+                                            <div class="col-span-1 grid grid-rows-2 gap-2">
+                                                <div class="bg-purple-700 text-white rounded-lg flex items-center justify-center font-medium text-sm">财务部</div>
+                                                <div class="bg-purple-500 text-white rounded-lg flex items-center justify-center font-medium text-sm">服务总监</div>
+                                            </div>
+                                            <div class="col-span-1 bg-blue-600 text-white rounded-lg flex items-center justify-center font-medium text-sm">技术部</div>
+                                            <div class="col-span-1 bg-teal-400 text-white rounded-lg flex items-center justify-center font-medium text-sm">总经理</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 业务排行榜 -->
+                <div class="space-y-2">
+                    <h2 class="text-xl font-bold text-slate-800">业务排行榜</h2>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <!-- 产值排行 -->
+                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="font-bold text-lg text-slate-800">产值排行</h3>
+                                <div class="relative">
+                                    <select class="appearance-none text-xs text-slate-600 bg-slate-50 px-2 py-0.5 rounded cursor-pointer font-medium pr-8 focus:outline-none focus:ring-2 focus:ring-slate-100">
+                                        <option>本季度</option>
+                                        <option>本月度</option>
+                                        <option>本年度</option>
+                                    </select>
+                                    <i data-lucide="chevron-down" class="w-3 h-3 absolute right-2 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                </div>
+                            </div>
+                            <div class="space-y-4">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-3">
+                                        <span class="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-xs">1</span>
+                                        <div>
+                                            <span class="font-medium text-slate-700">设计中心</span>
+                                            <div class="text-xs text-slate-400">西南公司/总部/设计支持中心</div>
+                                        </div>
+                                    </div>
+                                    <span class="font-bold text-lg text-slate-800">¥ 1,284k</span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-3">
+                                        <span class="w-6 h-6 rounded-full bg-slate-100 text-slate-600 font-bold flex items-center justify-center text-xs">2</span>
+                                        <div>
+                                            <span class="font-medium text-slate-700">技术中心</span>
+                                            <div class="text-xs text-slate-400">西南公司/总部/技术支持中心</div>
+                                        </div>
+                                    </div>
+                                    <span class="font-bold text-lg text-slate-800">¥ 1,156k</span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-3">
+                                        <span class="w-6 h-6 rounded-full bg-orange-50 text-orange-600 font-bold flex items-center justify-center text-xs">3</span>
+                                        <div>
+                                            <span class="font-medium text-slate-700">供应链中心</span>
+                                            <div class="text-xs text-slate-400">西南公司/总部/供应链支持中心</div>
+                                        </div>
+                                    </div>
+                                    <span class="font-bold text-lg text-slate-800">¥ 987k</span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-3">
+                                        <span class="w-6 h-6 rounded-full bg-blue-50 text-blue-600 font-bold flex items-center justify-center text-xs">4</span>
+                                        <div>
+                                            <span class="font-medium text-slate-700">商务中心</span>
+                                            <div class="text-xs text-slate-400">西南公司/总部/商务支持中心</div>
+                                        </div>
+                                    </div>
+                                    <span class="font-bold text-lg text-slate-800">¥ 865k</span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-3">
+                                        <span class="w-6 h-6 rounded-full bg-indigo-50 text-indigo-600 font-bold flex items-center justify-center text-xs">5</span>
+                                        <div>
+                                            <span class="font-medium text-slate-700">总包中心</span>
+                                            <div class="text-xs text-slate-400">西南公司/总部/总包管理中心</div>
+                                        </div>
+                                    </div>
+                                    <span class="font-bold text-lg text-slate-800">¥ 756k</span>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- 服务评价排行 -->
+                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="font-bold text-lg text-slate-800">服务评价排行</h3>
+                                <div class="relative">
+                                    <select class="appearance-none text-xs text-slate-600 bg-slate-50 px-2 py-0.5 rounded cursor-pointer font-medium pr-8 focus:outline-none focus:ring-2 focus:ring-slate-100">
+                                        <option>本季度</option>
+                                        <option>本月度</option>
+                                        <option>本年度</option>
+                                    </select>
+                                    <i data-lucide="chevron-down" class="w-3 h-3 absolute right-2 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                </div>
+                            </div>
+                            <div class="space-y-4">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-3">
+                                        <span class="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-xs">1</span>
+                                        <div>
+                                            <span class="font-medium text-slate-700">设计中心</span>
+                                            <div class="text-xs text-slate-400">西南公司/总部/设计支持中心</div>
+                                        </div>
+                                    </div>
+                                    <span class="font-bold text-lg text-slate-800">4.9</span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-3">
+                                        <span class="w-6 h-6 rounded-full bg-slate-100 text-slate-600 font-bold flex items-center justify-center text-xs">2</span>
+                                        <div>
+                                            <span class="font-medium text-slate-700">技术中心</span>
+                                            <div class="text-xs text-slate-400">西南公司/总部/技术支持中心</div>
+                                        </div>
+                                    </div>
+                                    <span class="font-bold text-lg text-slate-800">4.8</span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-3">
+                                        <span class="w-6 h-6 rounded-full bg-orange-50 text-orange-600 font-bold flex items-center justify-center text-xs">3</span>
+                                        <div>
+                                            <span class="font-medium text-slate-700">供应链中心</span>
+                                            <div class="text-xs text-slate-400">西南公司/总部/供应链支持中心</div>
+                                        </div>
+                                    </div>
+                                    <span class="font-bold text-lg text-slate-800">4.7</span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-3">
+                                        <span class="w-6 h-6 rounded-full bg-blue-50 text-blue-600 font-bold flex items-center justify-center text-xs">4</span>
+                                        <div>
+                                            <span class="font-medium text-slate-700">商务中心</span>
+                                            <div class="text-xs text-slate-400">西南公司/总部/商务支持中心</div>
+                                        </div>
+                                    </div>
+                                    <span class="font-bold text-lg text-slate-800">4.6</span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-3">
+                                        <span class="w-6 h-6 rounded-full bg-indigo-50 text-indigo-600 font-bold flex items-center justify-center text-xs">5</span>
+                                        <div>
+                                            <span class="font-medium text-slate-700">总包中心</span>
+                                            <div class="text-xs text-slate-400">西南公司/总部/总包管理中心</div>
+                                        </div>
+                                    </div>
+                                    <span class="font-bold text-lg text-slate-800">4.5</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 风险预控 -->
+                <div class="space-y-2">
+                    <h2 class="text-xl font-bold text-slate-800">风险预控</h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-5">
+                        <!-- 超合同工期项目数卡片 -->
+                        <div class="bg-white rounded-2xl sm:p-3 md:p-4 lg:p-5 xl:p-6 shadow-sm border border-slate-100 relative group hover:shadow-md transition-all duration-300 card-hover">
+                            <div class="absolute sm:top-3 sm:right-3 md:top-4 md:right-4 lg:top-5 lg:right-5 xl:top-6 xl:right-6 text-orange-100 group-hover:text-orange-600 transition-all duration-300"><i data-lucide="calendar" class="sm:w-4 sm:h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 xl:w-7 xl:h-7"></i></div>
+                            <div class="flex flex-col">
+                                <span class="text-slate-500 text-xs font-medium mb-2">超合同工期项目数</span>
+                                <h3 class="text-2xl font-bold text-slate-800 mb-2">5</h3>
+                                <div class="flex items-center gap-1 text-xs">
+                                    <span class="text-red-500 font-medium flex items-center"><i data-lucide="arrow-up-right" class="w-3 h-3 mr-1"></i> +2</span>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- 履约风险项目数卡片 -->
+                        <div class="bg-white rounded-2xl sm:p-3 md:p-4 lg:p-5 xl:p-6 shadow-sm border border-slate-100 relative group hover:shadow-md transition-all duration-300 card-hover">
+                            <div class="absolute sm:top-3 sm:right-3 md:top-4 md:right-4 lg:top-5 lg:right-5 xl:top-6 xl:right-6 text-red-100 group-hover:text-red-600 transition-all duration-300"><i data-lucide="alert-triangle" class="sm:w-4 sm:h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 xl:w-7 xl:h-7"></i></div>
+                            <div class="flex flex-col">
+                                <span class="text-slate-500 text-xs font-medium mb-2">履约风险项目数</span>
+                                <h3 class="text-2xl font-bold text-slate-800 mb-2">3</h3>
+                                <div class="flex items-center gap-1 text-xs">
+                                    <span class="text-emerald-500 font-medium flex items-center"><i data-lucide="arrow-down-right" class="w-3 h-3 mr-1"></i> -1</span>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- 一级节点调整项目数卡片 -->
+                        <div class="bg-white rounded-2xl sm:p-3 md:p-4 lg:p-5 xl:p-6 shadow-sm border border-slate-100 relative group hover:shadow-md transition-all duration-300 card-hover">
+                            <div class="absolute sm:top-3 sm:right-3 md:top-4 md:right-4 lg:top-5 lg:right-5 xl:top-6 xl:right-6 text-blue-100 group-hover:text-blue-600 transition-all duration-300"><i data-lucide="refresh-cw" class="sm:w-4 sm:h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 xl:w-7 xl:h-7"></i></div>
+                            <div class="flex flex-col">
+                                <span class="text-slate-500 text-xs font-medium mb-2">一级节点调整项目数</span>
+                                <h3 class="text-2xl font-bold text-slate-800 mb-2">8</h3>
+                                <div class="flex items-center gap-1 text-xs">
+                                    <span class="text-red-500 font-medium flex items-center"><i data-lucide="arrow-up-right" class="w-3 h-3 mr-1"></i> +3</span>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- 状态变更项目卡片 -->
+                        <div class="bg-white rounded-2xl sm:p-3 md:p-4 lg:p-5 xl:p-6 shadow-sm border border-slate-100 relative group hover:shadow-md transition-all duration-300 card-hover">
+                            <div class="absolute sm:top-3 sm:right-3 md:top-4 md:right-4 lg:top-5 lg:right-5 xl:top-6 xl:right-6 text-purple-100 group-hover:text-purple-600 transition-all duration-300"><i data-lucide="activity" class="sm:w-4 sm:h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 xl:w-7 xl:h-7"></i></div>
+                            <div class="flex flex-col">
+                                <span class="text-slate-500 text-xs font-medium mb-2">状态变更项目</span>
+                                <h3 class="text-2xl font-bold text-slate-800 mb-2">12</h3>
+                                <div class="flex items-center gap-1 text-xs">
+                                    <span class="text-red-500 font-medium flex items-center"><i data-lucide="arrow-up-right" class="w-3 h-3 mr-1"></i> +4</span>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- 质量安全问题突出项目卡片 -->
+                        <div class="bg-white rounded-2xl sm:p-3 md:p-4 lg:p-5 xl:p-6 shadow-sm border border-slate-100 relative group hover:shadow-md transition-all duration-300 card-hover">
+                            <div class="absolute sm:top-3 sm:right-3 md:top-4 md:right-4 lg:top-5 lg:right-5 xl:top-6 xl:right-6 text-red-100 group-hover:text-red-600 transition-all duration-300"><i data-lucide="shield" class="sm:w-4 sm:h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 xl:w-7 xl:h-7"></i></div>
+                            <div class="flex flex-col">
+                                <span class="text-slate-500 text-xs font-medium mb-2">质量安全问题突出项目</span>
+                                <h3 class="text-2xl font-bold text-slate-800 mb-2">2</h3>
+                                <div class="flex items-center gap-1 text-xs">
+                                    <span class="text-emerald-500 font-medium flex items-center"><i data-lucide="arrow-down-right" class="w-3 h-3 mr-1"></i> -1</span>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- 招采滞后项目数卡片 -->
+                        <div class="bg-white rounded-2xl sm:p-3 md:p-4 lg:p-5 xl:p-6 shadow-sm border border-slate-100 relative group hover:shadow-md transition-all duration-300 card-hover">
+                            <div class="absolute sm:top-3 sm:right-3 md:top-4 md:right-4 lg:top-5 lg:right-5 xl:top-6 xl:right-6 text-yellow-100 group-hover:text-yellow-500 transition-all duration-300"><i data-lucide="shopping-cart" class="sm:w-4 sm:h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 xl:w-7 xl:h-7"></i></div>
+                            <div class="flex flex-col">
+                                <span class="text-slate-500 text-xs font-medium mb-2">招采滞后项目数</span>
+                                <h3 class="text-2xl font-bold text-slate-800 mb-2">6</h3>
+                                <div class="flex items-center gap-1 text-xs">
+                                    <span class="text-red-500 font-medium flex items-center"><i data-lucide="arrow-up-right" class="w-3 h-3 mr-1"></i> +2</span>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- 风险处置超期数卡片 -->
+                        <div class="bg-white rounded-2xl sm:p-3 md:p-4 lg:p-5 xl:p-6 shadow-sm border border-slate-100 relative group hover:shadow-md transition-all duration-300 card-hover">
+                            <div class="absolute sm:top-3 sm:right-3 md:top-4 md:right-4 lg:top-5 lg:right-5 xl:top-6 xl:right-6 text-red-100 group-hover:text-red-600 transition-all duration-300"><i data-lucide="clock" class="sm:w-4 sm:h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 xl:w-7 xl:h-7"></i></div>
+                            <div class="flex flex-col">
+                                <span class="text-slate-500 text-xs font-medium mb-2">风险处置超期数</span>
+                                <h3 class="text-2xl font-bold text-slate-800 mb-2">4</h3>
+                                <div class="flex items-center gap-1 text-xs">
+                                    <span class="text-emerald-500 font-medium flex items-center"><i data-lucide="arrow-down-right" class="w-3 h-3 mr-1"></i> -1</span>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- 月度重点工作达成率卡片 -->
+                        <div class="bg-white rounded-2xl sm:p-3 md:p-4 lg:p-5 xl:p-6 shadow-sm border border-slate-100 relative group hover:shadow-md transition-all duration-300 card-hover">
+                            <div class="absolute sm:top-3 sm:right-3 md:top-4 md:right-4 lg:top-5 lg:right-5 xl:top-6 xl:right-6 text-green-100 group-hover:text-green-600 transition-all duration-300"><i data-lucide="check-square" class="sm:w-4 sm:h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 xl:w-7 xl:h-7"></i></div>
+                            <div class="flex flex-col">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <span class="text-slate-500 text-xs font-medium">月度重点工作达成率</span>
+                                    <div class="relative">
+                                        <select class="appearance-none text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded cursor-pointer font-medium pr-6 focus:outline-none focus:ring-2 focus:ring-green-100">
+                                            <option>1月</option>
+                                            <option>2月</option>
+                                            <option>3月</option>
+                                        </select>
+                                        <i data-lucide="chevron-down" class="w-3 h-3 absolute right-1 top-1/2 -translate-y-1/2 text-green-600"></i>
+                                    </div>
+                                </div>
+                                <h3 class="text-2xl font-bold text-slate-800 mb-2">78.5%</h3>
+                                <div class="flex items-center gap-1 text-xs">
+                                    <span class="text-emerald-500 font-medium flex items-center"><i data-lucide="arrow-up-right" class="w-3 h-3 mr-1"></i> +5.2%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 实时风险监控列表（已有保持不变） -->
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 mt-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="font-bold text-lg text-slate-800">实时风险监控</h3>
+                        <span class="px-3 py-1 bg-red-50 text-red-600 text-xs font-bold rounded">3 待处理</span>
+                    </div>
+                    <div class="space-y-4">
+                        <div class="p-4 border border-slate-100 rounded-xl bg-white flex gap-4 shadow-sm hover:shadow-md transition-shadow">
+                            <div class="p-3 h-10 w-10 bg-orange-50 text-orange-500 rounded-lg flex-shrink-0 flex items-center justify-center">
+                                <i data-lucide="clock" class="w-5 h-5"></i>
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex justify-between mb-2">
+                                    <h4 class="font-bold text-slate-800">进度滞后</h4>
+                                    <span class="text-sm text-slate-400">10:30</span>
+                                </div>
+                                <p class="text-sm text-slate-500 mb-3">设计中心-机场T3航站楼图纸深化任务已逾期2天</p>
+                                <div class="flex gap-2">
+                                    <button class="px-3 py-1.5 bg-indigo-600 text-white text-xs rounded-lg hover:bg-indigo-700 transition-colors font-medium shadow-sm shadow-indigo-100">
+                                        立即处理
+                                    </button>
+                                    <button class="px-3 py-1.5 bg-orange-100 text-orange-600 text-xs rounded-lg hover:bg-orange-200 transition-colors font-medium">
+                                        督办
+                                    </button>
+                                    <button class="px-3 py-1.5 bg-blue-100 text-blue-600 text-xs rounded-lg hover:bg-blue-200 transition-colors font-medium">
+                                        转派
+                                    </button>
+                                    <button class="px-3 py-1.5 bg-red-100 text-red-600 text-xs rounded-lg hover:bg-red-200 transition-colors font-medium">
+                                        提级
+                                    </button>
+                                    <button class="px-3 py-1.5 bg-slate-100 text-slate-600 text-xs rounded-lg hover:bg-slate-200 transition-colors font-medium">
+                                        忽略
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="p-4 border border-slate-100 rounded-xl bg-white flex gap-4 shadow-sm hover:shadow-md transition-shadow">
+                            <div class="p-3 h-10 w-10 bg-red-50 text-red-500 rounded-lg flex-shrink-0 flex items-center justify-center">
+                                <i data-lucide="thumbs-down" class="w-5 h-5"></i>
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex justify-between mb-2">
+                                    <h4 class="font-bold text-slate-800">差评预警</h4>
+                                    <span class="text-sm text-slate-400">09:15</span>
+                                </div>
+                                <p class="text-sm text-slate-500 mb-3">供应链中心-钢材采购任务收到2星评价，请核实。</p>
+                                <div class="flex gap-2">
+                                    <button class="px-3 py-1.5 bg-indigo-600 text-white text-xs rounded-lg hover:bg-indigo-700 transition-colors font-medium shadow-sm shadow-indigo-100">
+                                        立即处理
+                                    </button>
+                                    <button class="px-3 py-1.5 bg-orange-100 text-orange-600 text-xs rounded-lg hover:bg-orange-200 transition-colors font-medium">
+                                        督办
+                                    </button>
+                                    <button class="px-3 py-1.5 bg-blue-100 text-blue-600 text-xs rounded-lg hover:bg-blue-200 transition-colors font-medium">
+                                        转派
+                                    </button>
+                                    <button class="px-3 py-1.5 bg-red-100 text-red-600 text-xs rounded-lg hover:bg-red-200 transition-colors font-medium">
+                                        提级
+                                    </button>
+                                    <button class="px-3 py-1.5 bg-slate-100 text-slate-600 text-xs rounded-lg hover:bg-slate-200 transition-colors font-medium">
+                                        忽略
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+            </div>
+            
+            <!-- 决策会议区域 -->
+            <!-- <div id="decision-meeting" class="space-y-6 mt-12">
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 min-h-[600px]">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="font-bold text-lg text-slate-800">决策会议</h3>
+                        <button class="text-indigo-600 hover:text-indigo-700 text-sm font-medium flex items-center gap-1" onclick="loadDecisionMeetingContent()">
+                            加载决议议案 <i data-lucide="chevron-right" class="w-3 h-3"></i>
+                        </button>
+                    </div>
+                    <div id="decision-meeting-content" class="space-y-4">
+                        <div class="flex flex-col items-center justify-center py-12 text-center">
+                            <i data-lucide="calendar" class="w-12 h-12 text-slate-300 mb-4"></i>
+                            <p class="text-slate-500 mb-2">点击上方按钮加载决策会议内容</p>
+                            <p class="text-xs text-slate-400">或点击顶部滑块浮窗中的"决策会议"选项</p>
+                        </div>
+                    </div>
+                </div>
+            </div> -->
+        </div>
+    </div>
+
+    <script>
+        // 初始化 Lucide 图标
+        lucide.createIcons();
+
+        // 导航函数
+        function navigateTo(page) {
+            window.location.href = page;
+        }
+
+        // 平滑滚动到指定区域
+        function scrollToSection(sectionId) {
+            // 更新按钮状态
+            if (sectionId === 'business-status') {
+                document.getElementById('business-status-btn').classList.add('bg-indigo-600', 'text-white', 'shadow-sm', 'shadow-indigo-100');
+                document.getElementById('business-status-btn').classList.remove('text-slate-600', 'hover:bg-slate-50');
+                document.getElementById('decision-meeting-btn').classList.remove('bg-indigo-600', 'text-white', 'shadow-sm', 'shadow-indigo-100');
+                document.getElementById('decision-meeting-btn').classList.add('text-slate-600', 'hover:bg-slate-50');
+            } else if (sectionId === 'decision-meeting') {
+                document.getElementById('decision-meeting-btn').classList.add('bg-indigo-600', 'text-white', 'shadow-sm', 'shadow-indigo-100');
+                document.getElementById('decision-meeting-btn').classList.remove('text-slate-600', 'hover:bg-slate-50');
+                document.getElementById('business-status-btn').classList.remove('bg-indigo-600', 'text-white', 'shadow-sm', 'shadow-indigo-100');
+                document.getElementById('business-status-btn').classList.add('text-slate-600', 'hover:bg-slate-50');
+                
+                // 加载决策会议内容
+                // loadDecisionMeetingContent();
+            }
+            
+            // 平滑滚动到对应区域
+            const section = document.getElementById(sectionId);
+            if (section) {
+                section.scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+
+        // 加载决策会议内容
+        // function loadDecisionMeetingContent() {
+        //     try {
+        //         const contentDiv = document.getElementById('decision-meeting-content');
+                
+        //         if (!contentDiv) {
+        //             console.error('Decision meeting content div not found');
+        //             return;
+        //         }
+                
+        //         // 显示加载状态
+        //         contentDiv.innerHTML = `
+        //             <div class="flex flex-col items-center justify-center py-12">
+        //                 <div class="w-10 h-10 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
+        //                 <p class="text-slate-600">加载中...</p>
+        //             </div>
+        //         `;
+                
+        //         // 使用fetch加载resolutions.html内容，使用完整路径
+        //         fetch('pages/resolutions.html')
+        //             .then(response => {
+        //                 if (!response.ok) {
+        //                     throw new Error(`Network response was not ok: ${response.status}`);
+        //                 }
+        //                 return response.text();
+        //             })
+        //             .then(html => {
+        //                 try {
+        //                     // 解析HTML并提取main内容
+        //                     const parser = new DOMParser();
+        //                     const doc = parser.parseFromString(html, 'text/html');
+        //                     const mainContent = doc.querySelector('main');
+                            
+        //                     if (mainContent) {
+        //                         // 将main内容添加到当前页面
+        //                         contentDiv.innerHTML = '';
+        //                         contentDiv.appendChild(mainContent);
+                                
+        //                         // 重新初始化Lucide图标
+        //                         if (typeof lucide !== 'undefined' && typeof lucide.createIcons === 'function') {
+        //                             lucide.createIcons();
+        //                         }
+                                
+        //                         // 重新初始化态势卡片点击事件
+        //                         if (typeof initializeStatusCards === 'function') {
+        //                             initializeStatusCards();
+        //                         }
+        //                     } else {
+        //                         contentDiv.innerHTML = `
+        //                             <div class="flex flex-col items-center justify-center py-12 text-center">
+        //                                 <i data-lucide="alert-circle" class="w-12 h-12 text-red-400 mb-4"></i>
+        //                                 <p class="text-slate-500 mb-2">加载失败，请重试</p>
+        //                                 <button class="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors" onclick="loadDecisionMeetingContent()">
+        //                                     重新加载
+        //                                 </button>
+        //                             </div>
+        //                         `;
+        //                         if (typeof lucide !== 'undefined' && typeof lucide.createIcons === 'function') {
+        //                             lucide.createIcons();
+        //                         }
+        //                     }
+        //                 } catch (parseError) {
+        //                     console.error('Error parsing HTML:', parseError);
+        //                     contentDiv.innerHTML = `
+        //                         <div class="flex flex-col items-center justify-center py-12 text-center">
+        //                             <i data-lucide="alert-circle" class="w-12 h-12 text-red-400 mb-4"></i>
+        //                             <p class="text-slate-500 mb-2">加载失败，请重试</p>
+        //                             <button class="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors" onclick="loadDecisionMeetingContent()">
+        //                                 重新加载
+        //                             </button>
+        //                         </div>
+        //                     `;
+        //                     if (typeof lucide !== 'undefined' && typeof lucide.createIcons === 'function') {
+        //                         lucide.createIcons();
+        //                     }
+        //                 }
+        //             })
+        //             .catch(error => {
+        //                 console.error('Error loading resolutions.html:', error);
+        //                 contentDiv.innerHTML = `
+        //                     <div class="flex flex-col items-center justify-center py-12 text-center">
+        //                         <i data-lucide="alert-circle" class="w-12 h-12 text-red-400 mb-4"></i>
+        //                         <p class="text-slate-500 mb-2">加载失败，请检查网络连接</p>
+        //                         <button class="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors" onclick="loadDecisionMeetingContent()">
+        //                             重新加载
+        //                         </button>
+        //                     </div>
+        //                 `;
+        //                 if (typeof lucide !== 'undefined' && typeof lucide.createIcons === 'function') {
+        //                     lucide.createIcons();
+        //                 }
+        //             });
+        //     } catch (error) {
+        //         console.error('Error in loadDecisionMeetingContent:', error);
+        //         const contentDiv = document.getElementById('decision-meeting-content');
+        //         if (contentDiv) {
+        //             contentDiv.innerHTML = `
+        //                 <div class="flex flex-col items-center justify-center py-12 text-center">
+        //                     <i data-lucide="alert-circle" class="w-12 h-12 text-red-400 mb-4"></i>
+        //                     <p class="text-slate-500 mb-2">加载失败，请重试</p>
+        //                     <button class="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors" onclick="loadDecisionMeetingContent()">
+        //                         重新加载
+        //                     </button>
+        //                 </div>
+        //             `;
+        //             if (typeof lucide !== 'undefined' && typeof lucide.createIcons === 'function') {
+        //                 lucide.createIcons();
+        //             }
+        //         }
+        //     }
+        // }
+
+        // 从resolutions.html复制的函数
+        function initializeStatusCards() {
+            // 获取所有态势卡片
+            const statusCards = document.querySelectorAll('.status-card');
+            
+            statusCards.forEach(card => {
+                card.addEventListener('click', function() {
+                    // 检查当前卡片是否已选中
+                    const isCurrentlySelected = this.classList.contains('card-selected');
+                    
+                    // 先移除所有卡片的选中状态
+                    statusCards.forEach(c => c.classList.remove('card-selected'));
+                    
+                    // 如果当前卡片未选中，则添加选中状态
+                    if (!isCurrentlySelected) {
+                        this.classList.add('card-selected');
+                        
+                        // 执行筛选逻辑
+                        const filterStatus = this.getAttribute('data-filter');
+                        filterResolutionsByStatus(filterStatus);
+                    } else {
+                        // 取消筛选，显示所有议案
+                        showAllResolutions();
+                    }
+                });
+            });
+        }
+
+        function filterResolutionsByStatus(status) {
+            console.log('筛选议案状态:', status);
+            
+            // 获取所有议案项
+            const resolutionItems = document.querySelectorAll('.resolution-item');
+            
+            resolutionItems.forEach(item => {
+                // 检查议案的状态是否匹配
+                const statusElement = item.querySelector('.status-badge');
+                if (statusElement && statusElement.textContent.trim() === status) {
+                    // 显示匹配的议案
+                    item.style.display = 'table-row';
+                } else {
+                    // 隐藏不匹配的议案
+                    item.style.display = 'none';
+                }
+            });
+        }
+
+        function showAllResolutions() {
+            // 获取所有议案项
+            const resolutionItems = document.querySelectorAll('.resolution-item');
+            
+            // 显示所有议案
+            resolutionItems.forEach(item => {
+                item.style.display = 'table-row';
+            });
+        }
+
+        function switchPage(pageId, event) {
+            // 阻止事件冒泡，确保按钮点击优先级高于卡片展开
+            if (event) {
+                event.stopPropagation();
+            }
+            // 隐藏所有页面
+            document.querySelectorAll('.page-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            // 显示目标页面
+            document.getElementById(pageId).classList.add('active');
+            // 更新页面标题
+            if (pageId === 'resolutions-list') {
+                document.getElementById('pageTitle').textContent = '决议议案清单';
+            } else if (pageId === 'resolution-report') {
+                document.getElementById('pageTitle').textContent = '决议议案提报';
+            } else if (pageId === 'resolution-detail') {
+                document.getElementById('pageTitle').textContent = '决议议案详情';
+            }
+        }
+
+        function openResolutionReport() {
+            switchPage('resolution-report');
+        }
+
+        function openResolutionDetail(resolutionId, resolutionName, status, category, submittedBy, submittedUnit, createdAt, createdBy) {
+            // 保存议案数据到全局变量
+            window.currentResolution = {
+                id: resolutionId,
+                name: resolutionName,
+                status: status,
+                category: category,
+                submittedBy: submittedBy,
+                submittedUnit: submittedUnit,
+                createdAt: createdAt,
+                createdBy: createdBy
+            };
+            
+            // 切换到决议议案详情页面
+            switchPage('resolution-detail');
+        }
+
+        function submitResolutionReport() {
+            alert('决议议案已提交审核');
+            switchPage('resolutions-list');
+        }
+
+        function saveResolutionDraft() {
+            alert('决议议案草稿已保存');
+        }
+
+        function withdrawResolution() {
+            alert('决议议案已撤回');
+            switchPage('resolutions-list');
+        }
+
+        function batchWithdrawResolutions() {
+            const selectedItems = document.querySelectorAll('.resolution-checkbox:checked');
+            if (selectedItems.length === 0) {
+                alert('请选择要撤销的决议议案');
+                return;
+            }
+            alert(`已批量撤销 ${selectedItems.length} 个决议议案`);
+        }
+
+        // 切换中心视图
+        function switchCenterView(centerName, element) {
+            // 移除所有活动状态
+            document.querySelectorAll('.center-nav').forEach(item => {
+                item.classList.remove('active');
+            });
+            // 添加当前活动状态
+            if (element) {
+                element.classList.add('active');
+            }
+        }
+
+        // 全局变量
+        let efficiencyChart;
+        let taskStatusChart;
+        let currentMatrixIndex = 0;
+        const matrixData = [
+            { title: '支持中心满意度矩阵', data: [
+                { center: '设计中心', score: '4.9', trend: '+0.1', trendClass: 'text-emerald-500' },
+                { center: '技术中心', score: '4.8', trend: '+0.2', trendClass: 'text-emerald-500' },
+                { center: '供应链中心', score: '4.7', trend: '-0.1', trendClass: 'text-red-500' },
+                { center: '商务中心', score: '4.6', trend: '0.0', trendClass: 'text-slate-400' },
+                { center: '总包中心', score: '4.5', trend: '+0.2', trendClass: 'text-emerald-500' }
+            ]},
+            { title: '服务职能满意度矩阵', data: [
+                { center: '设计服务', score: '4.9', trend: '+0.1', trendClass: 'text-emerald-500' },
+                { center: '技术支持', score: '4.8', trend: '+0.2', trendClass: 'text-emerald-500' },
+                { center: '招采服务', score: '4.6', trend: '-0.1', trendClass: 'text-red-500' },
+                { center: '商务服务', score: '4.7', trend: '0.0', trendClass: 'text-slate-400' },
+                { center: '总包管理', score: '4.5', trend: '+0.1', trendClass: 'text-emerald-500' }
+            ]}
+        ];
+
+        // 初始化图表
+        function initCharts() {
+            // 确保 Chart.js 已加载
+            if (typeof Chart !== 'undefined') {
+                // 创效态势图表
+                const efficiencyChartCtx = document.getElementById('efficiencyChart');
+                if (efficiencyChartCtx) {
+                    efficiencyChart = new Chart(efficiencyChartCtx, {
+                        type: 'line',
+                        data: {
+                            labels: ['1月', '2月', '3月', '4月', '5月', '6月'],
+                            datasets: [{
+                                label: '人均产值(万元)',
+                                data: [35, 40, 45, 55, 65, 75],
+                                backgroundColor: 'rgba(79, 70, 229, 0.7)',
+                                borderColor: 'rgba(79, 70, 229, 1)',
+                                borderWidth: 1,
+                                fill: true
+                            }, {
+                                label: '人均产值提升率(%)',
+                                data: [12, 15, 20, 25, 18, 22],
+                                type: 'line',
+                                borderColor: 'rgba(16, 185, 129, 1)',
+                                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                                borderWidth: 2,
+                                pointBackgroundColor: 'rgba(16, 185, 129, 1)',
+                                yAxisID: 'y1',
+                                fill: false
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    title: {
+                                        display: true,
+                                        text: '产值(万元)'
+                                    }
+                                },
+                                y1: {
+                                    beginAtZero: true,
+                                    position: 'right',
+                                    grid: {
+                                        drawOnChartArea: false
+                                    },
+                                    title: {
+                                        display: true,
+                                        text: '提升率(%)'
+                                    }
+                                }
+                            },
+                            plugins: {
+                                legend: {
+                                    display: true,
+                                    position: 'top'
+                                },
+                                tooltip: {
+                                    mode: 'index',
+                                    intersect: false
+                                }
+                            }
+                        }
+                    });
+                }
+                
+                // 添加效率卡片点击事件，实现动态标题切换
+                const efficiencyCards = document.querySelectorAll('.efficiency-card');
+                const chartTitle = document.getElementById('efficiencyChartTitle');
+                const cardTitles = [
+                    '服务项目人均产值趋势',
+                    '一级节点完成率趋势',
+                    '设计创效率趋势',
+                    '单采成本降低率趋势',
+                    '结算核对量差效益率趋势'
+                ];
+                
+                // 为每个卡片准备对应的图表数据
+                const chartDataSets = [
+                    // 人均产值提升率数据
+                    {
+                        label: '人均产值(万元)',
+                        data: [35, 40, 45, 55, 65, 75],
+                        backgroundColor: 'rgba(79, 70, 229, 0.7)',
+                        borderColor: 'rgba(79, 70, 229, 1)',
+                        borderWidth: 1,
+                        fill: true
+                    },
+                    // 一级节点完成率数据
+                    {
+                        label: '一级节点完成率(%)',
+                        data: [75, 78, 80, 82, 85, 88.5],
+                        backgroundColor: 'rgba(16, 185, 129, 0.7)',
+                        borderColor: 'rgba(16, 185, 129, 1)',
+                        borderWidth: 1,
+                        fill: true
+                    },
+                    // 设计创效率数据
+                    {
+                        label: '设计创效率(%)',
+                        data: [65, 68, 70, 72, 74, 76.2],
+                        backgroundColor: 'rgba(139, 92, 246, 0.7)',
+                        borderColor: 'rgba(139, 92, 246, 1)',
+                        borderWidth: 1,
+                        fill: true
+                    },
+                    // 单采成本降低率数据
+                    {
+                        label: '单采成本降低率(%)',
+                        data: [10, 12, 13, 14, 15, 15.8],
+                        backgroundColor: 'rgba(249, 115, 22, 0.7)',
+                        borderColor: 'rgba(249, 115, 22, 1)',
+                        borderWidth: 1,
+                        fill: true
+                    },
+                    // 结算核对量差效益率数据
+                    {
+                        label: '结算核对量差效益率(%)',
+                        data: [7, 7.5, 8, 8.5, 9, 9.2],
+                        backgroundColor: 'rgba(99, 102, 241, 0.7)',
+                        borderColor: 'rgba(99, 102, 241, 1)',
+                        borderWidth: 1,
+                        fill: true
+                    }
+                ];
+                
+                // 更新图表数据的函数
+                function updateChartData(index) {
+                    if (efficiencyChart) {
+                        // 更新图表数据
+                        efficiencyChart.data.datasets[0] = chartDataSets[index];
+                        // 更新图表标题
+                        efficiencyChart.options.plugins.title = {
+                            display: true,
+                            text: cardTitles[index]
+                        };
+                        // 重新渲染图表
+                        efficiencyChart.update();
+                    }
+                }
+                
+                // 卡片轮播功能
+                let currentCardIndex = 0;
+                let carouselInterval;
+                
+                // 初始化卡片轮播
+                function initCardCarousel() {
+                    // 停止之前的轮播
+                    if (carouselInterval) {
+                        clearInterval(carouselInterval);
+                    }
+                    
+                    // 启动轮播
+                    carouselInterval = setInterval(() => {
+                        // 移除当前卡片的选中状态
+                        efficiencyCards[currentCardIndex].classList.remove('active');
+                        
+                        // 计算下一个卡片索引
+                        currentCardIndex = (currentCardIndex + 1) % efficiencyCards.length;
+                        
+                        // 添加下一个卡片的选中状态
+                        efficiencyCards[currentCardIndex].classList.add('active');
+                        
+                        // 更新图表标题
+                        if (chartTitle) {
+                            chartTitle.textContent = cardTitles[currentCardIndex];
+                        }
+                        
+                        // 更新图表数据
+                        updateChartData(currentCardIndex);
+                    }, 2000); // 2秒切换一次
+                }
+                
+                // 为卡片添加点击事件
+                efficiencyCards.forEach((card, index) => {
+                    card.addEventListener('click', function() {
+                        // 停止轮播
+                        clearInterval(carouselInterval);
+                        
+                        // 移除所有卡片的选中状态
+                        efficiencyCards.forEach(c => c.classList.remove('active'));
+                        
+                        // 添加当前卡片的选中状态
+                        card.classList.add('active');
+                        
+                        // 更新当前索引
+                        currentCardIndex = index;
+                        
+                        // 更新图表标题
+                        if (chartTitle) {
+                            chartTitle.textContent = cardTitles[index];
+                        }
+                        
+                        // 更新图表数据
+                        updateChartData(index);
+                        
+                        // 重新启动轮播
+                        initCardCarousel();
+                    });
+                });
+                
+                // 初始化轮播
+                initCardCarousel();
+                
+                // 初始化第一张卡片为选中状态
+                if (efficiencyCards.length > 0) {
+                    efficiencyCards[0].classList.add('active');
+                    updateChartData(0);
+                }
+
+                // 任务状态图表
+                const taskStatusChartCtx = document.getElementById('taskStatusChart');
+                if (taskStatusChartCtx) {
+                    taskStatusChart = new Chart(taskStatusChartCtx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['进行中', '待确认', '待评价', '已归档'],
+                            datasets: [{
+                                data: [45, 12, 20, 23],
+                                backgroundColor: ['#4F46E5', '#fbbf24', '#10B981', '#94a3b8'],
+                                borderWidth: 0
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            cutout: '70%',
+                            plugins: {
+                                legend: {
+                                    display: false
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+        }
+
+        // 更新创效态势图表
+        function updateEfficiencyChart(index) {
+            if (!efficiencyChart) return;
+
+            const chartData = [
+                // 人均产值提升率趋势
+                {
+                    title: '服务项目人均产值趋势',
+                    datasets: [{
+                        label: '人均产值(万元)',
+                        data: [35, 40, 45, 55, 65, 75],
+                        backgroundColor: 'rgba(79, 70, 229, 0.7)',
+                        borderColor: 'rgba(79, 70, 229, 1)',
+                        borderWidth: 1,
+                        fill: true
+                    }, {
+                        label: '人均产值提升率(%)',
+                        data: [12, 15, 20, 25, 18, 22],
+                        type: 'line',
+                        borderColor: 'rgba(16, 185, 129, 1)',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        borderWidth: 2,
+                        pointBackgroundColor: 'rgba(16, 185, 129, 1)',
+                        yAxisID: 'y1',
+                        fill: false
+                    }]
+                },
+                // 一级节点完成率趋势
+                {
+                    title: '一级节点完成率趋势',
+                    datasets: [{
+                        label: '计划量',
+                        data: [100, 100, 100, 100, 100, 100],
+                        backgroundColor: 'rgba(209, 213, 219, 0.5)',
+                        borderColor: 'rgba(209, 213, 219, 1)',
+                        borderWidth: 1,
+                        fill: false
+                    }, {
+                        label: '实际量',
+                        data: [85, 88, 90, 87, 92, 88],
+                        backgroundColor: 'rgba(16, 185, 129, 0.5)',
+                        borderColor: 'rgba(16, 185, 129, 1)',
+                        borderWidth: 1,
+                        fill: false
+                    }, {
+                        label: '完成率(%)',
+                        data: [85, 88, 90, 87, 92, 88],
+                        type: 'line',
+                        borderColor: 'rgba(79, 70, 229, 1)',
+                        backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                        borderWidth: 2,
+                        pointBackgroundColor: 'rgba(79, 70, 229, 1)',
+                        yAxisID: 'y1',
+                        fill: false
+                    }]
+                },
+                // 设计创效率趋势
+                {
+                    title: '设计创效率趋势',
+                    datasets: [{
+                        label: '设计创效率(%)',
+                        data: [65, 68, 72, 70, 75, 76],
+                        borderColor: 'rgba(168, 85, 247, 1)',
+                        backgroundColor: 'rgba(168, 85, 247, 0.1)',
+                        borderWidth: 2,
+                        pointBackgroundColor: 'rgba(168, 85, 247, 1)',
+                        fill: true
+                    }]
+                },
+                // 单采成本降低率趋势
+                {
+                    title: '单采成本降低率趋势',
+                    datasets: [{
+                        label: '单采成本降低率(%)',
+                        data: [10, 12, 14, 15, 16, 15],
+                        borderColor: 'rgba(249, 115, 22, 1)',
+                        backgroundColor: 'rgba(249, 115, 22, 0.1)',
+                        borderWidth: 2,
+                        pointBackgroundColor: 'rgba(249, 115, 22, 1)',
+                        fill: true
+                    }]
+                },
+                // 结算核对量差效益率趋势
+                {
+                    title: '结算核对量差效益率趋势',
+                    datasets: [{
+                        label: '结算核对量差效益率(%)',
+                        data: [7, 8, 9, 10, 9, 9],
+                        borderColor: 'rgba(59, 130, 246, 1)',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderWidth: 2,
+                        pointBackgroundColor: 'rgba(59, 130, 246, 1)',
+                        fill: true
+                    }]
+                }
+            ];
+
+            const data = chartData[index];
+            efficiencyChart.data.datasets = data.datasets;
+            efficiencyChart.options.plugins.title = {
+                display: true,
+                text: data.title
+            };
+            efficiencyChart.update();
+
+            // 更新卡片选中状态
+            document.querySelectorAll('.efficiency-card').forEach((card, i) => {
+                if (i === index) {
+                    card.classList.add('border-indigo-600', 'bg-indigo-50');
+                } else {
+                    card.classList.remove('border-indigo-600', 'bg-indigo-50');
+                }
+            });
+        }
+
+        // 轮播满意度矩阵
+        function rotateSatisfactionMatrix() {
+            currentMatrixIndex = (currentMatrixIndex + 1) % matrixData.length;
+            updateSatisfactionMatrix();
+        }
+
+        // 更新满意度矩阵
+        function updateSatisfactionMatrix() {
+            const matrix = matrixData[currentMatrixIndex];
+            const matrixContainer = document.getElementById('satisfactionMatrix');
+            if (!matrixContainer) return;
+
+            let html = `
+                <div class="grid grid-cols-3 gap-2 text-center">
+                    <div class="bg-slate-50 py-2 rounded-lg text-xs font-medium text-slate-700">${matrix.title.includes('支持中心') ? '支持中心' : '服务职能'}</div>
+                    <div class="bg-slate-50 py-2 rounded-lg text-xs font-medium text-slate-700">满意度</div>
+                    <div class="bg-slate-50 py-2 rounded-lg text-xs font-medium text-slate-700">趋势</div>
+                </div>
+            `;
+
+            matrix.data.forEach(item => {
+                html += `
+                    <div class="grid grid-cols-3 gap-2 text-center">
+                        <div class="bg-white py-2 rounded-lg text-xs font-medium text-slate-700 border border-slate-100">${item.center}</div>
+                        <div class="bg-white py-2 rounded-lg text-xs font-medium text-slate-700 border border-slate-100">${item.score}</div>
+                        <div class="bg-white py-2 rounded-lg text-xs font-medium ${item.trendClass} border border-slate-100">${item.trend}</div>
+                    </div>
+                `;
+            });
+
+            matrixContainer.innerHTML = html;
+        }
+
+        // 初始化创效态势卡片点击事件
+        function initEfficiencyCards() {
+            const cards = document.querySelectorAll('.efficiency-card');
+            cards.forEach((card, index) => {
+                card.addEventListener('click', () => {
+                    updateEfficiencyChart(index);
+                });
+            });
+        }
+
+        // 直接执行图表初始化
+        initCharts();
+
+        // 页面加载完成后初始化其他功能
+        document.addEventListener('DOMContentLoaded', function() {
+            // 初始化创效态势卡片点击事件
+            initEfficiencyCards();
+            
+            // 初始化满意度矩阵轮播
+            updateSatisfactionMatrix();
+            setInterval(rotateSatisfactionMatrix, 2000); // 每2秒轮播一次
+        });
+    </script>
+</body>
+</html>

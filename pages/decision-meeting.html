@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>履约协同平台 - 决策会议</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        indigo: { 50: '#eef2ff', 500: '#6366f1', 600: '#4f46e5' },
+                        slate: { 50: '#f8fafc', 100: '#f1f5f9', 200: '#e2e8f0', 300: '#cbd5e1', 800: '#1e293b' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #F4F7FE; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .page-section { display: none; animation: fadeIn 0.3s ease-in-out; }
+        .page-section.active { display: block; }
+        .tab-content { display: none; animation: fadeIn 0.3s ease-in-out; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* 导航选中样式 */
+        .nav-item.active { background-color: #eef2ff; color: #4f46e5; border-right: 3px solid #4f46e5; }
+        .center-nav.active { background-color: #eef2ff; color: #4f46e5; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+
+        /* 抽屉动画 - 改为从右侧划出 */
+        .drawer { transform: translateX(100%); transition: transform 0.3s ease-in-out; }
+        .drawer.open { transform: translateX(0); }
+        
+        /* 慢速旋转动画 */
+        @keyframes spin-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .animate-spin-slow { animation: spin-slow 3s linear infinite; }
+        
+        /* 卡片悬停动画 */
+        .card-hover { transition: all 0.3s ease; }
+        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); }
+        
+        /* 按钮交互效果 */
+        .btn-primary { transition: all 0.3s ease; }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.3); }
+        
+        /* 平滑滚动 */
+        html { scroll-behavior: smooth; }
+        
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            .grid-cols-3 { grid-template-columns: 1fr; }
+            .grid-cols-2 { grid-template-columns: 1fr; }
+            
+            /* 筛选条件响应式 */
+            .filter-section .grid-cols-4 { grid-template-columns: 1fr; }
+            
+            /* 操作按钮区域响应式 */
+            .action-section {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+            }
+            
+            /* 表格响应式 */
+            table {
+                font-size: 12px;
+            }
+            
+            table th,
+            table td {
+                padding: 8px;
+            }
+            
+            /* 按钮响应式 */
+            .btn {
+                padding: 4px 8px;
+                font-size: 12px;
+            }
+            
+            /* 页签响应式 */
+            .tab-item {
+                padding: 8px 16px;
+                font-size: 14px;
+            }
+            
+            /* 工作项卡片响应式 */
+            .work-item-card { grid-template-columns: 1fr; }
+            
+            /* 表单按钮响应式 */
+            .form-actions { position: static; margin-top: 20px; justify-content: center; }
+            
+            /* 弹窗响应式 */
+            #workItemModal .max-w-4xl { max-width: 95vw; }
+            #workItemModal table { font-size: 12px; }
+            #workItemModal th, #workItemModal td { padding: 8px; }
+        }
+        
+        /* 平板端响应式调整 */
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .filter-section .grid-cols-4 { grid-template-columns: repeat(2, 1fr); }
+        }
+        
+        /* 加载动画 */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        
+        /* 进度条动画 */
+        @keyframes progress {
+            from { width: 0%; }
+            to { width: var(--progress-width, 100%); }
+        }
+        .progress-animate { animation: progress 1.5s ease-out forwards; }
+        
+        /* 标签动画 */
+        @keyframes slideIn {
+            from { transform: translateX(-100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .slide-in { animation: slideIn 0.5s ease-out forwards; }
+        
+        /* 微交互效果 */
+        .interactive { transition: all 0.2s ease; }
+        .interactive:hover { cursor: pointer; }
+        
+        /* 表格行悬停效果 */
+        table tbody tr:hover { background-color: #f8fafc; }
+        
+        /* 表单元素焦点效果 */
+        input:focus, select:focus, textarea:focus { outline: none; ring: 2px; ring-color: #6366f1; ring-opacity: 0.5; }
+        
+        /* 卡片选中状态 - 统一所有卡片的选中视觉效果 */
+        .card-selected {
+            border-color: #4f46e5 !important; /* 选中时的边框颜色 */
+            background-color: #f8faff !important; /* 选中时的背景色 */
+            box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1) !important; /* 选中时的边框阴影效果 */
+            transition: all 0.3s ease !important; /* 平滑过渡效果 */
+        }
+        
+        /* 页签样式 */
+        .tab-item {
+            padding: 12px 24px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-bottom: 2px solid transparent;
+        }
+        
+        .tab-item.active {
+            color: #4f46e5;
+            border-bottom-color: #4f46e5;
+            font-weight: 600;
+        }
+        
+        /* 表格样式 */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        table th {
+            background-color: #f8fafc;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #1e293b;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        
+        table td {
+            padding: 12px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        /* 按钮样式 */
+        .btn {
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .btn-primary {
+            background-color: #4f46e5;
+            color: white;
+        }
+        
+        .btn-secondary {
+            background-color: #e2e8f0;
+            color: #1e293b;
+        }
+        
+        /* 筛选条件样式 */
+        .filter-section {
+            background-color: white;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            margin-bottom: 16px;
+        }
+        
+        /* 操作按钮区域样式 */
+        .action-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+    </style>
+    <script>
+        // 初始化Lucide图标
+        lucide.createIcons();
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 初始化页签切换
+            initializeTabs();
+            // 初始化筛选功能
+            initializeFilters();
+            // 初始化表格排序
+            initializeTableSorting();
+        });
+
+        // 初始化页签切换
+        function initializeTabs() {
+            const tabItems = document.querySelectorAll('.tab-item');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            tabItems.forEach((tab, index) => {
+                tab.addEventListener('click', function() {
+                    // 移除所有页签的选中状态
+                    tabItems.forEach(item => item.classList.remove('active'));
+                    // 添加当前页签的选中状态
+                    this.classList.add('active');
+                    // 隐藏所有内容
+                    tabContents.forEach(content => content.classList.remove('active'));
+                    // 显示当前内容
+                    tabContents[index].classList.add('active');
+                });
+            });
+        }
+
+        // 初始化筛选功能
+        function initializeFilters() {
+            // 实现筛选逻辑
+            const searchInputs = document.querySelectorAll('.search-input');
+            searchInputs.forEach(input => {
+                input.addEventListener('input', function() {
+                    // 实现实时筛选
+                    const value = this.value.toLowerCase();
+                    const table = this.closest('.filter-section').nextElementSibling.querySelector('table');
+                    const rows = table.querySelectorAll('tbody tr');
+                    
+                    rows.forEach(row => {
+                        const text = row.textContent.toLowerCase();
+                        if (text.includes(value)) {
+                            row.style.display = '';
+                        } else {
+                            row.style.display = 'none';
+                        }
+                    });
+                });
+            });
+        }
+
+        // 初始化表格排序
+        function initializeTableSorting() {
+            const tables = document.querySelectorAll('table');
+            tables.forEach(table => {
+                const headers = table.querySelectorAll('th');
+                headers.forEach(header => {
+                    header.addEventListener('click', function() {
+                        // 实现排序逻辑
+                        const index = Array.from(headers).indexOf(this);
+                        const rows = Array.from(table.querySelectorAll('tbody tr'));
+                        
+                        // 切换排序方向
+                        const isAscending = this.classList.contains('sort-asc');
+                        this.classList.remove('sort-asc', 'sort-desc');
+                        this.classList.add(isAscending ? 'sort-desc' : 'sort-asc');
+                        
+                        // 排序行
+                        rows.sort((a, b) => {
+                            const aText = a.querySelectorAll('td')[index].textContent.trim();
+                            const bText = b.querySelectorAll('td')[index].textContent.trim();
+                            
+                            if (isAscending) {
+                                return bText.localeCompare(aText);
+                            } else {
+                                return aText.localeCompare(bText);
+                            }
+                        });
+                        
+                        // 重新插入行
+                        const tbody = table.querySelector('tbody');
+                        rows.forEach(row => tbody.appendChild(row));
+                    });
+                });
+            });
+        }
+
+        // 页面切换函数
+        function switchPage(pageId) {
+            // 隐藏所有页面
+            document.querySelectorAll('.page-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            // 显示目标页面
+            document.getElementById(pageId).classList.add('active');
+        }
+
+        // 打开会议发起页面
+        function openMeetingInitiation() {
+            switchPage('meeting-initiation');
+        }
+
+        // 打开会议详情页面
+        function openMeetingDetail(meetingId) {
+            // 保存会议ID到全局变量
+            window.currentMeetingId = meetingId;
+            // 切换到会议详情页面
+            switchPage('meeting-detail');
+        }
+
+        // 导出会议纪要
+        function exportMeetingMinutes() {
+            alert('导出会议纪要');
+        }
+
+        // 批量操作
+        function batchOperation(operation) {
+            const selectedRows = document.querySelectorAll('tbody input[type="checkbox"]:checked');
+            if (selectedRows.length === 0) {
+                alert('请选择要操作的项');
+                return;
+            }
+            
+            alert(`执行批量${operation}操作，共${selectedRows.length}项`);
+        }
+
+        // 打开决议事项清单
+        function openResolutionList(meetingId) {
+            alert(`打开决议事项清单，会议ID: ${meetingId}`);
+        }
+
+        // 打开会议待办清单
+        function openMeetingTodoList(meetingId) {
+            alert(`打开会议待办清单，会议ID: ${meetingId}`);
+        }
+
+        // 打开决议事项选择模态框
+        function openResolutionModal() {
+            alert('打开决议事项选择模态框');
+            // 实际项目中应该打开模态框
+        }
+
+        // 保存会议草稿
+        function saveMeetingDraft() {
+            alert('会议草稿已保存');
+        }
+
+        // 提交会议
+        function submitMeeting() {
+            alert('会议已提交，将通过中建通发起会议');
+            switchPage('meeting-main');
+        }
+
+        // 发起会议
+        function startMeeting() {
+            alert('会议已发起，签到二维码已生成');
+            // 实际项目中应该显示签到二维码
+        }
+
+        // 结束会议
+        function endMeeting() {
+            alert('会议已结束，会议纪要文件已生成');
+            // 实际项目中应该显示会议纪要文件
+        }
+    </script>
+</head>
+<body class="text-slate-600 font-sans">
+    <div class="min-h-screen bg-[#F4F7FE]">
+        <!-- 主内容区域 -->
+        <main class="p-6">
+            <!-- 页面标题 -->
+            <div class="mb-6">
+                <h1 class="text-2xl font-bold text-slate-800">决策会议</h1>
+            </div>
+
+            <!-- 会议台账和待办清单页面 -->
+            <div id="meeting-main" class="page-section active">
+                <!-- 页签导航 -->
+                <div class="flex border-b border-slate-200 mb-6">
+                    <div class="tab-item active">会议台账</div>
+                    <div class="tab-item">待办清单</div>
+                </div>
+
+                <!-- 会议台账内容 -->
+                <div class="tab-content active">
+                    <!-- 操作按钮区域 -->
+                    <div class="action-section">
+                        <div>
+                            <button class="btn btn-primary" onclick="openMeetingInitiation()">
+                                <i data-lucide="plus" class="w-4 h-4"></i> 创建会议
+                            </button>
+                        </div>
+                        <div>
+                            <button class="btn btn-secondary" onclick="exportMeetingMinutes()">
+                                <i data-lucide="download" class="w-4 h-4"></i> 导出会议纪要
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 筛选条件 -->
+                    <div class="filter-section">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">会议名称搜索</label>
+                                <input type="text" class="search-input w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-100" placeholder="请输入会议名称">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">会议地点</label>
+                                <select class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                                    <option value="">全部</option>
+                                    <option value="会议室A">会议室A</option>
+                                    <option value="会议室B">会议室B</option>
+                                    <option value="线上会议">线上会议</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">会议时间范围</label>
+                                <input type="date" class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">创建人</label>
+                                <select class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                                    <option value="">全部</option>
+                                    <option value="张经理">张经理</option>
+                                    <option value="李总">李总</option>
+                                    <option value="王工">王工</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 会议台账表格 -->
+                    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th class="w-10">
+                                        <input type="checkbox">
+                                    </th>
+                                    <th>会议名称</th>
+                                    <th>会议计划时间</th>
+                                    <th>会议实际开始时间</th>
+                                    <th>决议事项</th>
+                                    <th>会议待办</th>
+                                    <th>会议地点</th>
+                                    <th>参会单位</th>
+                                    <th>会议纪要</th>
+                                    <th>会议号</th>
+                                    <th>审议单位</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><input type="checkbox"></td>
+                                    <td>
+                                        <a href="#" class="text-indigo-600 hover:underline" onclick="openMeetingDetail(1)">2026年第一次总经理办公会</a>
+                                    </td>
+                                    <td>2026-01-15 09:00</td>
+                                    <td>2026-01-15 09:10</td>
+                                    <td>
+                                        <a href="#" class="text-indigo-600 hover:underline" onclick="openResolutionList(1)">3项</a>
+                                    </td>
+                                    <td>
+                                        <a href="#" class="text-indigo-600 hover:underline" onclick="openMeetingTodoList(1)">5项</a>
+                                    </td>
+                                    <td>会议室A</td>
+                                    <td>总经办、财务部、工程部</td>
+                                    <td><a href="#" class="text-indigo-600 hover:underline">查看</a></td>
+                                    <td>2026011501</td>
+                                    <td>总经理办公会</td>
+                                </tr>
+                                <tr>
+                                    <td><input type="checkbox"></td>
+                                    <td>
+                                        <a href="#" class="text-indigo-600 hover:underline" onclick="openMeetingDetail(2)">2026年第一次董事会</a>
+                                    </td>
+                                    <td>2026-01-10 14:00</td>
+                                    <td>2026-01-10 14:00</td>
+                                    <td>
+                                        <a href="#" class="text-indigo-600 hover:underline" onclick="openResolutionList(2)">5项</a>
+                                    </td>
+                                    <td>
+                                        <a href="#" class="text-indigo-600 hover:underline" onclick="openMeetingTodoList(2)">8项</a>
+                                    </td>
+                                    <td>会议室B</td>
+                                    <td>董事会成员、高管团队</td>
+                                    <td><a href="#" class="text-indigo-600 hover:underline">查看</a></td>
+                                    <td>2026011001</td>
+                                    <td>董事会</td>
+                                </tr>
+                                <tr>
+                                    <td><input type="checkbox"></td>
+                                    <td>
+                                        <a href="#" class="text-indigo-600 hover:underline" onclick="openMeetingDetail(3)">2025年第四季度总结会</a>
+                                    </td>
+                                    <td>2025-12-25 10:00</td>
+                                    <td>2025-12-25 10:05</td>
+                                    <td>
+                                        <a href="#" class="text-indigo-600 hover:underline" onclick="openResolutionList(3)">2项</a>
+                                    </td>
+                                    <td>
+                                        <a href="#" class="text-indigo-600 hover:underline" onclick="openMeetingTodoList(3)">3项</a>
+                                    </td>
+                                    <td>线上会议</td>
+                                    <td>各部门负责人</td>
+                                    <td><a href="#" class="text-indigo-600 hover:underline">查看</a></td>
+                                    <td>2025122501</td>
+                                    <td>总经理办公会</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 待办清单内容 -->
+                <div class="tab-content">
+                    <!-- 操作按钮区域 -->
+                    <div class="action-section">
+                        <div>
+                            <button class="btn btn-secondary mr-2" onclick="batchOperation('指派')">
+                                <i data-lucide="user-plus" class="w-4 h-4"></i> 指派
+                            </button>
+                            <button class="btn btn-secondary mr-2" onclick="batchOperation('督办')">
+                                <i data-lucide="alert-circle" class="w-4 h-4"></i> 督办
+                            </button>
+                            <button class="btn btn-secondary mr-2" onclick="batchOperation('转派')">
+                                <i data-lucide="repeat" class="w-4 h-4"></i> 转派
+                            </button>
+                            <button class="btn btn-secondary" onclick="batchOperation('终止')">
+                                <i data-lucide="x-circle" class="w-4 h-4"></i> 终止
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 筛选条件 -->
+                    <div class="filter-section">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">待办会议</label>
+                                <select class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                                    <option value="">全部</option>
+                                    <option value="1">2026年第一次总经理办公会</option>
+                                    <option value="2">2026年第一次董事会</option>
+                                    <option value="3">2025年第四季度总结会</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">责任人</label>
+                                <select class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                                    <option value="">全部</option>
+                                    <option value="张经理">张经理</option>
+                                    <option value="李总">李总</option>
+                                    <option value="王工">王工</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">责任单位</label>
+                                <select class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                                    <option value="">全部</option>
+                                    <option value="总经办">总经办</option>
+                                    <option value="财务部">财务部</option>
+                                    <option value="工程部">工程部</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">任务名称</label>
+                                <input type="text" class="search-input w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-100" placeholder="请输入任务名称">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 待办清单表格 -->
+                    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th class="w-10">
+                                        <input type="checkbox">
+                                    </th>
+                                    <th>待办任务描述</th>
+                                    <th>责任人</th>
+                                    <th>责任单位</th>
+                                    <th>截止时间</th>
+                                    <th>决议会议</th>
+                                    <th>会议纪要</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><input type="checkbox"></td>
+                                    <td>完成2026年预算编制</td>
+                                    <td>张经理</td>
+                                    <td>财务部</td>
+                                    <td>2026-01-20</td>
+                                    <td>2026年第一次总经理办公会</td>
+                                    <td><a href="#" class="text-indigo-600 hover:underline">查看</a></td>
+                                </tr>
+                                <tr>
+                                    <td><input type="checkbox"></td>
+                                    <td>提交项目可行性报告</td>
+                                    <td>王工</td>
+                                    <td>工程部</td>
+                                    <td>2026-01-25</td>
+                                    <td>2026年第一次总经理办公会</td>
+                                    <td><a href="#" class="text-indigo-600 hover:underline">查看</a></td>
+                                </tr>
+                                <tr>
+                                    <td><input type="checkbox"></td>
+                                    <td>制定2026年战略规划</td>
+                                    <td>李总</td>
+                                    <td>总经办</td>
+                                    <td>2026-02-01</td>
+                                    <td>2026年第一次董事会</td>
+                                    <td><a href="#" class="text-indigo-600 hover:underline">查看</a></td>
+                                </tr>
+                                <tr>
+                                    <td><input type="checkbox"></td>
+                                    <td>完成2025年工作总结</td>
+                                    <td>张经理</td>
+                                    <td>财务部</td>
+                                    <td>2026-01-10</td>
+                                    <td>2025年第四季度总结会</td>
+                                    <td><a href="#" class="text-indigo-600 hover:underline">查看</a></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 会议发起页面 -->
+            <div id="meeting-initiation" class="page-section">
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-xl font-bold text-slate-800">会议发起</h2>
+                        <button class="btn btn-secondary" onclick="switchPage('meeting-main')">
+                            <i data-lucide="arrow-left" class="w-4 h-4"></i> 返回
+                        </button>
+                    </div>
+
+                    <!-- 会议发起表单 -->
+                    <form>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">会议名称</label>
+                                <input type="text" class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-100" placeholder="请输入会议名称">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">会议时间</label>
+                                <input type="datetime-local" class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">会议地点</label>
+                                <input type="text" class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-100" placeholder="请输入会议地点">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">会议号</label>
+                                <input type="text" class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-100" placeholder="请输入会议号">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">会议提交人</label>
+                                <input type="text" class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-100" placeholder="请输入会议提交人">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">附件</label>
+                                <input type="file" class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                            </div>
+                        </div>
+
+                        <div class="mb-6">
+                            <label class="block text-sm font-medium text-slate-700 mb-2">会议纪要</label>
+                            <textarea rows="4" class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-100" placeholder="请输入会议纪要"></textarea>
+                        </div>
+
+                        <!-- 决议事项清单子表 -->
+                        <div class="mb-6">
+                            <div class="flex justify-between items-center mb-4">
+                                <label class="block text-sm font-medium text-slate-700">决议事项清单</label>
+                                <button type="button" class="btn btn-primary" onclick="openResolutionModal()">
+                                    <i data-lucide="plus" class="w-4 h-4"></i> 新增
+                                </button>
+                            </div>
+                            <div class="bg-slate-50 rounded-lg p-4">
+                                <table class="w-full">
+                                    <thead>
+                                        <tr class="border-b border-slate-200">
+                                            <th class="text-left text-sm font-medium text-slate-700 pb-2">决议事项名称</th>
+                                            <th class="text-left text-sm font-medium text-slate-700 pb-2">事项类别</th>
+                                            <th class="text-left text-sm font-medium text-slate-700 pb-2">决议状态</th>
+                                            <th class="text-left text-sm font-medium text-slate-700 pb-2">提交单位</th>
+                                            <th class="text-left text-sm font-medium text-slate-700 pb-2">提交时间</th>
+                                            <th class="text-left text-sm font-medium text-slate-700 pb-2">操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- 决议事项列表 -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- 表单操作按钮 -->
+                        <div class="flex justify-end gap-4">
+                            <button type="button" class="btn btn-secondary" onclick="saveMeetingDraft()">
+                                <i data-lucide="save" class="w-4 h-4"></i> 保存
+                            </button>
+                            <button type="button" class="btn btn-primary" onclick="submitMeeting()">
+                                <i data-lucide="send" class="w-4 h-4"></i> 提交
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 会议详情页面 -->
+            <div id="meeting-detail" class="page-section">
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-xl font-bold text-slate-800">会议详情</h2>
+                        <button class="btn btn-secondary" onclick="switchPage('meeting-main')">
+                            <i data-lucide="arrow-left" class="w-4 h-4"></i> 返回
+                        </button>
+                    </div>
+
+                    <!-- 会议基础信息 -->
+                    <div class="border-b border-slate-200 pb-6 mb-6">
+                        <h3 class="text-lg font-semibold text-slate-800 mb-4">会议基础信息</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-500 mb-1">会议名称</label>
+                                <p class="text-slate-800">2026年第一次总经理办公会</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-500 mb-1">会议计划时间</label>
+                                <p class="text-slate-800">2026-01-15 09:00</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-500 mb-1">会议实际开始时间</label>
+                                <p class="text-slate-800">2026-01-15 09:10</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-500 mb-1">会议地点</label>
+                                <p class="text-slate-800">会议室A</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-500 mb-1">参会单位</label>
+                                <p class="text-slate-800">总经办、财务部、工程部</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-500 mb-1">会议号</label>
+                                <p class="text-slate-800">2026011501</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 审议结论 -->
+                    <div class="border-b border-slate-200 pb-6 mb-6">
+                        <h3 class="text-lg font-semibold text-slate-800 mb-4">审议结论</h3>
+                        <div class="bg-slate-50 rounded-lg p-4">
+                            <table class="w-full">
+                                <thead>
+                                    <tr class="border-b border-slate-200">
+                                        <th class="text-left text-sm font-medium text-slate-700 pb-2">决议事项名称</th>
+                                        <th class="text-left text-sm font-medium text-slate-700 pb-2">事项类别</th>
+                                        <th class="text-left text-sm font-medium text-slate-700 pb-2">提交单位</th>
+                                        <th class="text-left text-sm font-medium text-slate-700 pb-2">决议状态</th>
+                                        <th class="text-left text-sm font-medium text-slate-700 pb-2">备注</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="border-b border-slate-100">
+                                        <td class="py-3">2026年预算方案</td>
+                                        <td class="py-3">财务</td>
+                                        <td class="py-3">财务部</td>
+                                        <td class="py-3">
+                                            <select class="border border-slate-200 rounded-lg px-2 py-1 text-sm">
+                                                <option>通过</option>
+                                                <option>未通过</option>
+                                                <option>进一步论证</option>
+                                                <option>提级决议</option>
+                                                <option>撤销</option>
+                                                <option>待决议</option>
+                                            </select>
+                                        </td>
+                                        <td class="py-3">
+                                            <input type="text" class="border border-slate-200 rounded-lg px-2 py-1 text-sm w-full" placeholder="请输入备注">
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="py-3">项目可行性报告</td>
+                                        <td class="py-3">工程</td>
+                                        <td class="py-3">工程部</td>
+                                        <td class="py-3">
+                                            <select class="border border-slate-200 rounded-lg px-2 py-1 text-sm">
+                                                <option>通过</option>
+                                                <option>未通过</option>
+                                                <option>进一步论证</option>
+                                                <option>提级决议</option>
+                                                <option>撤销</option>
+                                                <option>待决议</option>
+                                            </select>
+                                        </td>
+                                        <td class="py-3">
+                                            <input type="text" class="border border-slate-200 rounded-lg px-2 py-1 text-sm w-full" placeholder="请输入备注">
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- 会后待办 -->
+                    <div class="border-b border-slate-200 pb-6 mb-6">
+                        <h3 class="text-lg font-semibold text-slate-800 mb-4">会后待办</h3>
+                        <div class="bg-slate-50 rounded-lg p-4">
+                            <table class="w-full">
+                                <thead>
+                                    <tr class="border-b border-slate-200">
+                                        <th class="text-left text-sm font-medium text-slate-700 pb-2">待办任务描述</th>
+                                        <th class="text-left text-sm font-medium text-slate-700 pb-2">责任人</th>
+                                        <th class="text-left text-sm font-medium text-slate-700 pb-2">责任单位</th>
+                                        <th class="text-left text-sm font-medium text-slate-700 pb-2">截止时间</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="border-b border-slate-100">
+                                        <td class="py-3">完成2026年预算编制</td>
+                                        <td class="py-3">张经理</td>
+                                        <td class="py-3">财务部</td>
+                                        <td class="py-3">2026-01-20</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="py-3">提交项目可行性报告</td>
+                                        <td class="py-3">王工</td>
+                                        <td class="py-3">工程部</td>
+                                        <td class="py-3">2026-01-25</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- 会议纪要和决议附件 -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <h3 class="text-lg font-semibold text-slate-800 mb-4">会议纪要</h3>
+                            <div class="border border-slate-200 rounded-lg p-4">
+                                <input type="file" class="mb-4">
+                                <p class="text-sm text-slate-500">上传会议纪要文件</p>
+                            </div>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-slate-800 mb-4">决议附件</h3>
+                            <div class="border border-slate-200 rounded-lg p-4">
+                                <input type="file" class="mb-4">
+                                <p class="text-sm text-slate-500">上传决议附件文件</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 操作按钮 -->
+                    <div class="flex justify-end gap-4">
+                        <button class="btn btn-secondary" onclick="exportMeetingMinutes()">
+                            <i data-lucide="download" class="w-4 h-4"></i> 导出会议纪要
+                        </button>
+                        <button class="btn btn-secondary" onclick="endMeeting()">
+                            <i data-lucide="x-circle" class="w-4 h-4"></i> 结束
+                        </button>
+                        <button class="btn btn-primary" onclick="startMeeting()">
+                            <i data-lucide="play-circle" class="w-4 h-4"></i> 发起
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

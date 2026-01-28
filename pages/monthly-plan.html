@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>履约协同平台 - 月度工作计划</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        indigo: { 50: '#eef2ff', 500: '#6366f1', 600: '#4f46e5' },
+                        slate: { 50: '#f8fafc', 100: '#f1f5f9', 200: '#e2e8f0', 300: '#cbd5e1', 800: '#1e293b' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #F4F7FE; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .page-section { display: none; animation: fadeIn 0.3s ease-in-out; }
+        .page-section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* 导航选中样式 */
+        .nav-item.active { background-color: #eef2ff; color: #4f46e5; border-right: 3px solid #4f46e5; }
+        .center-nav.active { background-color: #eef2ff; color: #4f46e5; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+
+        /* 抽屉动画 - 改为从右侧划出 */
+        .drawer { transform: translateX(100%); transition: transform 0.3s ease-in-out; }
+        .drawer.open { transform: translateX(0); }
+        
+        /* 慢速旋转动画 */
+        @keyframes spin-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .animate-spin-slow { animation: spin-slow 3s linear infinite; }
+        
+        /* 卡片悬停动画 */
+        .card-hover { transition: all 0.3s ease; }
+        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); }
+        
+        /* 按钮交互效果 */
+        .btn-primary { transition: all 0.3s ease; }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.3); }
+        
+        /* 平滑滚动 */
+        html { scroll-behavior: smooth; }
+        
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            .sidebar { width: 240px; }
+            .main-content { margin-left: 240px; }
+            .grid-cols-3 { grid-template-columns: 1fr; }
+            .grid-cols-2 { grid-template-columns: 1fr; }
+            
+            /* 工作项卡片响应式 */
+            .work-item-card { grid-template-columns: 1fr; }
+            
+            /* 表单按钮响应式 */
+            .form-actions { position: static; margin-top: 20px; justify-content: center; }
+            
+            /* 弹窗响应式 */
+            #workItemModal .max-w-4xl { max-width: 95vw; }
+            #workItemModal table { font-size: 12px; }
+            #workItemModal th, #workItemModal td { padding: 8px; }
+        }
+        
+        /* 加载动画 */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        
+        /* 进度条动画 */
+        @keyframes progress {
+            from { width: 0%; }
+            to { width: var(--progress-width, 100%); }
+        }
+        .progress-animate { animation: progress 1.5s ease-out forwards; }
+        
+        /* 标签动画 */
+        @keyframes slideIn {
+            from { transform: translateX(-100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .slide-in { animation: slideIn 0.5s ease-out forwards; }
+        
+        /* 微交互效果 */
+        .interactive { transition: all 0.2s ease; }
+        .interactive:hover { cursor: pointer; }
+        
+        /* 表格行悬停效果 */
+        table tbody tr:hover { background-color: #f8fafc; }
+        
+        /* 表单元素焦点效果 */
+        input:focus, select:focus, textarea:focus { outline: none; ring: 2px; ring-color: #6366f1; ring-opacity: 0.5; }
+        
+        /* 卡片选中状态 - 统一所有卡片的选中视觉效果 */
+        .card-selected {
+            border-color: #4f46e5 !important; /* 选中时的边框颜色 */
+            background-color: #f8faff !important; /* 选中时的背景色 */
+            box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1) !important; /* 选中时的边框阴影效果 */
+            transition: all 0.3s ease !important; /* 平滑过渡效果 */
+        }
+        
+        /* 页签样式 */
+        .tab-item {
+            padding: 12px 24px;
+            border-bottom: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .tab-item.active {
+            color: #4f46e5;
+            border-bottom-color: #4f46e5;
+            font-weight: 600;
+        }
+        
+        /* 表格操作按钮 */
+        .table-action-btn {
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            transition: all 0.2s ease;
+        }
+        .table-action-btn:hover {
+            opacity: 0.8;
+            transform: translateY(-1px);
+        }
+    </style>
+    <script>
+        // 初始化Lucide图标
+        lucide.createIcons();
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 初始化页签切换
+            initializeTabs();
+            // 初始化态势卡片点击事件
+            initializeStatusCards();
+            // 初始化表格排序
+            initializeTableSorting();
+        });
+
+        // 初始化页签切换
+        function initializeTabs() {
+            const tabItems = document.querySelectorAll('.tab-item');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            tabItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    const tabId = this.getAttribute('data-tab');
+                    
+                    // 更新页签状态
+                    tabItems.forEach(i => i.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    // 更新内容显示
+                    tabContents.forEach(content => {
+                        content.classList.remove('active');
+                        if (content.id === tabId) {
+                            content.classList.add('active');
+                        }
+                    });
+                });
+            });
+        }
+
+        // 初始化态势卡片点击事件
+        function initializeStatusCards() {
+            const statusCards = document.querySelectorAll('[data-status]');
+            
+            statusCards.forEach(card => {
+                card.addEventListener('click', function() {
+                    // 移除所有卡片的选中状态
+                    statusCards.forEach(c => c.classList.remove('card-selected'));
+                    // 添加当前卡片的选中状态
+                    this.classList.add('card-selected');
+                    
+                    // 执行筛选逻辑
+                    const status = this.getAttribute('data-status');
+                    filterTasksByStatus(status);
+                });
+            });
+        }
+
+        // 筛选任务状态
+        function filterTasksByStatus(status) {
+            const taskRows = document.querySelectorAll('#planDetailTable tbody tr');
+            
+            taskRows.forEach(row => {
+                if (status === 'all' || row.getAttribute('data-status') === status) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+
+        // 初始化表格排序
+        function initializeTableSorting() {
+            const headers = document.querySelectorAll('th[data-sort]');
+            
+            headers.forEach(header => {
+                header.addEventListener('click', function() {
+                    const tableId = this.closest('table').id;
+                    const sortField = this.getAttribute('data-sort');
+                    sortTable(tableId, sortField);
+                });
+            });
+        }
+
+        // 表格排序
+        function sortTable(tableId, sortField) {
+            const table = document.getElementById(tableId);
+            const tbody = table.querySelector('tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            
+            // 排序逻辑
+            rows.sort((a, b) => {
+                const aValue = a.querySelector(`[data-field="${sortField}"]`).textContent;
+                const bValue = b.querySelector(`[data-field="${sortField}"]`).textContent;
+                
+                if (aValue < bValue) return -1;
+                if (aValue > bValue) return 1;
+                return 0;
+            });
+            
+            // 清空并重新添加排序后的行
+            tbody.innerHTML = '';
+            rows.forEach(row => tbody.appendChild(row));
+        }
+
+        // 打开计划执行页面
+        function openPlanExecution() {
+            alert('打开计划执行页面');
+        }
+
+        // 打开计划详情页面
+        function openPlanDetail() {
+            alert('打开计划详情页面');
+        }
+
+        // 打开计划编排页面
+        function openPlanOrchestration() {
+            alert('打开计划编排页面');
+        }
+
+        // 打开计划调整页面
+        function openPlanAdjustment() {
+            alert('打开计划调整页面');
+        }
+
+        // 新增计划
+        function addNewPlan() {
+            alert('打开新增计划页面');
+        }
+
+        // 筛选功能
+        function applyFilters(tabId) {
+            alert('应用筛选条件');
+        }
+    </script>
+</head>
+<body class="font-sans text-slate-800">
+    <!-- 主容器 -->
+    <div class="min-h-screen bg-F4F7FE">
+        <!-- 内容区域 -->
+        <div class="container mx-auto p-6">
+                <!-- 页签导航 -->
+                <div class="mb-6 border-b border-slate-200">
+                    <div class="flex gap-8">
+                        <div class="tab-item active" data-tab="plan-detail">计划明细</div>
+                        <div class="tab-item" data-tab="plan-orchestration">计划编排</div>
+                    </div>
+                </div>
+                
+                <!-- 计划明细内容 -->
+                <div id="plan-detail" class="tab-content active">
+                    <!-- 全局筛选 -->
+                    <div class="bg-white rounded-xl p-4 shadow-sm mb-6">
+                        <div class="flex flex-wrap gap-4 items-center">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">月度</label>
+                                <select class="px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                                    <option value="">全部</option>
+                                    <option value="2026-01">2026年01月</option>
+                                    <option value="2026-02">2026年02月</option>
+                                    <option value="2026-03">2026年03月</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">支持中心</label>
+                                <select class="px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                                    <option value="">全部</option>
+                                    <option value="设计中心">设计中心</option>
+                                    <option value="技术中心">技术中心</option>
+                                    <option value="商务中心">商务中心</option>
+                                    <option value="供应链中心">供应链中心</option>
+                                </select>
+                            </div>
+                            <div class="flex items-end">
+                                <button onclick="applyFilters('plan-detail')" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition">
+                                    <i data-lucide="filter" class="w-4 h-4 inline mr-1"></i> 筛选
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 态势卡片 -->
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                        <div class="bg-white rounded-xl p-4 shadow-sm card-hover" data-status="all">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <div class="text-sm text-slate-500">总计划数</div>
+                                    <div class="text-2xl font-bold mt-1">24</div>
+                                </div>
+                                <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center">
+                                    <i data-lucide="clipboard-list" class="w-5 h-5 text-indigo-600"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl p-4 shadow-sm card-hover" data-status="pending">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <div class="text-sm text-slate-500">待开始</div>
+                                    <div class="text-2xl font-bold mt-1">8</div>
+                                </div>
+                                <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                                    <i data-lucide="clock" class="w-5 h-5 text-blue-600"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl p-4 shadow-sm card-hover" data-status="in-progress">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <div class="text-sm text-slate-500">进行中</div>
+                                    <div class="text-2xl font-bold mt-1">10</div>
+                                </div>
+                                <div class="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center">
+                                    <i data-lucide="activity" class="w-5 h-5 text-yellow-600"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl p-4 shadow-sm card-hover" data-status="completed">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <div class="text-sm text-slate-500">已完成</div>
+                                    <div class="text-2xl font-bold mt-1">4</div>
+                                </div>
+                                <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                                    <i data-lucide="check-circle" class="w-5 h-5 text-green-600"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl p-4 shadow-sm card-hover" data-status="overdue">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <div class="text-sm text-slate-500">已超期</div>
+                                    <div class="text-2xl font-bold mt-1">2</div>
+                                </div>
+                                <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                                    <i data-lucide="alert-circle" class="w-5 h-5 text-red-600"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 计划明细表格 -->
+                    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table id="planDetailTable" class="w-full">
+                                <thead class="bg-slate-50">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider" data-sort="month">
+                                            计划月度
+                                        </th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider" data-sort="center">
+                                            支持中心
+                                        </th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider" data-sort="item">
+                                            工作计划项
+                                        </th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider" data-sort="content">
+                                            工作内容
+                                        </th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider" data-sort="deadline">
+                                            截止时间
+                                        </th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider" data-sort="progress">
+                                            计划进度
+                                        </th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider" data-sort="reporter">
+                                            提报人员
+                                        </th>
+                                        <th class="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                            操作
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-slate-200">
+                                    <tr data-status="pending">
+                                        <td class="px-4 py-3 whitespace-nowrap" data-field="month">2026-01</td>
+                                        <td class="px-4 py-3 whitespace-nowrap" data-field="center">设计中心</td>
+                                        <td class="px-4 py-3" data-field="item">
+                                            <a href="#" class="text-indigo-600 hover:underline" onclick="openPlanDetail()">建筑设计</a>
+                                        </td>
+                                        <td class="px-4 py-3" data-field="content">完成办公楼建筑设计方案</td>
+                                        <td class="px-4 py-3 whitespace-nowrap" data-field="deadline">2026-01-31</td>
+                                        <td class="px-4 py-3" data-field="progress">
+                                            <div class="w-24 bg-slate-200 rounded-full h-2">
+                                                <div class="bg-indigo-600 h-2 rounded-full" style="width: 0%"></div>
+                                            </div>
+                                            <span class="text-xs text-slate-500 ml-2">0%</span>
+                                        </td>
+                                        <td class="px-4 py-3 whitespace-nowrap" data-field="reporter">李设计师</td>
+                                        <td class="px-4 py-3 text-right whitespace-nowrap">
+                                            <button onclick="openPlanExecution()" class="table-action-btn bg-indigo-100 text-indigo-600 mr-2">执行</button>
+                                            <button onclick="openPlanDetail()" class="table-action-btn bg-blue-100 text-blue-600">详情</button>
+                                        </td>
+                                    </tr>
+                                    <tr data-status="in-progress">
+                                        <td class="px-4 py-3 whitespace-nowrap" data-field="month">2026-01</td>
+                                        <td class="px-4 py-3 whitespace-nowrap" data-field="center">技术中心</td>
+                                        <td class="px-4 py-3" data-field="item">
+                                            <a href="#" class="text-indigo-600 hover:underline" onclick="openPlanDetail()">结构计算</a>
+                                        </td>
+                                        <td class="px-4 py-3" data-field="content">完成结构受力分析计算</td>
+                                        <td class="px-4 py-3 whitespace-nowrap" data-field="deadline">2026-01-25</td>
+                                        <td class="px-4 py-3" data-field="progress">
+                                            <div class="w-24 bg-slate-200 rounded-full h-2">
+                                                <div class="bg-indigo-600 h-2 rounded-full" style="width: 60%"></div>
+                                            </div>
+                                            <span class="text-xs text-slate-500 ml-2">60%</span>
+                                        </td>
+                                        <td class="px-4 py-3 whitespace-nowrap" data-field="reporter">王工程师</td>
+                                        <td class="px-4 py-3 text-right whitespace-nowrap">
+                                            <button onclick="openPlanExecution()" class="table-action-btn bg-indigo-100 text-indigo-600 mr-2">执行</button>
+                                            <button onclick="openPlanDetail()" class="table-action-btn bg-blue-100 text-blue-600">详情</button>
+                                        </td>
+                                    </tr>
+                                    <tr data-status="completed">
+                                        <td class="px-4 py-3 whitespace-nowrap" data-field="month">2026-01</td>
+                                        <td class="px-4 py-3 whitespace-nowrap" data-field="center">商务中心</td>
+                                        <td class="px-4 py-3" data-field="item">
+                                            <a href="#" class="text-indigo-600 hover:underline" onclick="openPlanDetail()">合同评审</a>
+                                        </td>
+                                        <td class="px-4 py-3" data-field="content">完成年度合同评审工作</td>
+                                        <td class="px-4 py-3 whitespace-nowrap" data-field="deadline">2026-01-20</td>
+                                        <td class="px-4 py-3" data-field="progress">
+                                            <div class="w-24 bg-slate-200 rounded-full h-2">
+                                                <div class="bg-green-600 h-2 rounded-full" style="width: 100%"></div>
+                                            </div>
+                                            <span class="text-xs text-slate-500 ml-2">100%</span>
+                                        </td>
+                                        <td class="px-4 py-3 whitespace-nowrap" data-field="reporter">赵经理</td>
+                                        <td class="px-4 py-3 text-right whitespace-nowrap">
+                                            <button onclick="openPlanExecution()" class="table-action-btn bg-indigo-100 text-indigo-600 mr-2">执行</button>
+                                            <button onclick="openPlanDetail()" class="table-action-btn bg-blue-100 text-blue-600">详情</button>
+                                        </td>
+                                    </tr>
+                                    <tr data-status="overdue">
+                                        <td class="px-4 py-3 whitespace-nowrap" data-field="month">2026-01</td>
+                                        <td class="px-4 py-3 whitespace-nowrap" data-field="center">供应链中心</td>
+                                        <td class="px-4 py-3" data-field="item">
+                                            <a href="#" class="text-indigo-600 hover:underline" onclick="openPlanDetail()">设备采购</a>
+                                        </td>
+                                        <td class="px-4 py-3" data-field="content">完成设备采购招标</td>
+                                        <td class="px-4 py-3 whitespace-nowrap" data-field="deadline">2026-01-15</td>
+                                        <td class="px-4 py-3" data-field="progress">
+                                            <div class="w-24 bg-slate-200 rounded-full h-2">
+                                                <div class="bg-red-600 h-2 rounded-full" style="width: 40%"></div>
+                                            </div>
+                                            <span class="text-xs text-slate-500 ml-2">40%</span>
+                                        </td>
+                                        <td class="px-4 py-3 whitespace-nowrap" data-field="reporter">钱主管</td>
+                                        <td class="px-4 py-3 text-right whitespace-nowrap">
+                                            <button onclick="openPlanExecution()" class="table-action-btn bg-indigo-100 text-indigo-600 mr-2">执行</button>
+                                            <button onclick="openPlanDetail()" class="table-action-btn bg-blue-100 text-blue-600">详情</button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 计划编排内容 -->
+                <div id="plan-orchestration" class="tab-content">
+                    <!-- 筛选和操作区 -->
+                    <div class="bg-white rounded-xl p-4 shadow-sm mb-6">
+                        <div class="flex flex-wrap gap-4 items-center justify-between">
+                            <div class="flex flex-wrap gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">月度</label>
+                                    <select class="px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                                        <option value="">全部</option>
+                                        <option value="2026-01">2026年01月</option>
+                                        <option value="2026-02">2026年02月</option>
+                                        <option value="2026-03">2026年03月</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">支持中心</label>
+                                    <select class="px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                                        <option value="">全部</option>
+                                        <option value="设计中心">设计中心</option>
+                                        <option value="技术中心">技术中心</option>
+                                        <option value="商务中心">商务中心</option>
+                                        <option value="供应链中心">供应链中心</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">编排状态</label>
+                                    <select class="px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                                        <option value="">全部</option>
+                                        <option value="draft">草稿</option>
+                                        <option value="submitted">已提交</option>
+                                        <option value="approved">已批准</option>
+                                        <option value="rejected">已拒绝</option>
+                                    </select>
+                                </div>
+                                <div class="flex items-end">
+                                    <button onclick="applyFilters('plan-orchestration')" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition">
+                                        <i data-lucide="filter" class="w-4 h-4 inline mr-1"></i> 筛选
+                                    </button>
+                                </div>
+                            </div>
+                            <div>
+                                <button onclick="addNewPlan()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition">
+                                    <i data-lucide="plus" class="w-4 h-4 inline mr-1"></i> 新增
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 计划编排表格 -->
+                    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table id="planOrchestrationTable" class="w-full">
+                                <thead class="bg-slate-50">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider" data-sort="id">
+                                            计划编号
+                                        </th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider" data-sort="month">
+                                            计划月度
+                                        </th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider" data-sort="center">
+                                            支持中心
+                                        </th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider" data-sort="status">
+                                            编排状态
+                                        </th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider" data-sort="complete-time">
+                                            完成时间
+                                        </th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider" data-sort="reporter">
+                                            提报人员
+                                        </th>
+                                        <th class="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                            操作
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-slate-200">
+                                    <tr>
+                                        <td class="px-4 py-3" data-field="id">
+                                            <a href="#" class="text-indigo-600 hover:underline" onclick="openPlanDetail()">PLAN-2026-01-001</a>
+                                        </td>
+                                        <td class="px-4 py-3 whitespace-nowrap" data-field="month">2026-01</td>
+                                        <td class="px-4 py-3 whitespace-nowrap" data-field="center">设计中心</td>
+                                        <td class="px-4 py-3 whitespace-nowrap" data-field="status">
+                                            <span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-600">已批准</span>
+                                        </td>
+                                        <td class="px-4 py-3 whitespace-nowrap" data-field="complete-time">2026-01-10</td>
+                                        <td class="px-4 py-3 whitespace-nowrap" data-field="reporter">李设计师</td>
+                                        <td class="px-4 py-3 text-right whitespace-nowrap">
+                                            <button onclick="openPlanOrchestration()" class="table-action-btn bg-indigo-100 text-indigo-600 mr-2">编排</button>
+                                            <button onclick="openPlanAdjustment()" class="table-action-btn bg-yellow-100 text-yellow-600 mr-2">调整</button>
+                                            <button onclick="openPlanDetail()" class="table-action-btn bg-blue-100 text-blue-600">详情</button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="px-4 py-3" data-field="id">
+                                            <a href="#" class="text-indigo-600 hover:underline" onclick="openPlanDetail()">PLAN-2026-01-002</a>
+                                        </td>
+                                        <td class="px-4 py-3 whitespace-nowrap" data-field="month">2026-01</td>
+                                        <td class="px-4 py-3 whitespace-nowrap" data-field="center">技术中心</td>
+                                        <td class="px-4 py-3 whitespace-nowrap" data-field="status">
+                                            <span class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-600">已提交</span>
+                                        </td>
+                                        <td class="px-4 py-3 whitespace-nowrap" data-field="complete-time">2026-01-15</td>
+                                        <td class="px-4 py-3 whitespace-nowrap" data-field="reporter">王工程师</td>
+                                        <td class="px-4 py-3 text-right whitespace-nowrap">
+                                            <button onclick="openPlanOrchestration()" class="table-action-btn bg-indigo-100 text-indigo-600 mr-2">编排</button>
+                                            <button onclick="openPlanAdjustment()" class="table-action-btn bg-yellow-100 text-yellow-600 mr-2">调整</button>
+                                            <button onclick="openPlanDetail()" class="table-action-btn bg-blue-100 text-blue-600">详情</button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="px-4 py-3" data-field="id">
+                                            <a href="#" class="text-indigo-600 hover:underline" onclick="openPlanDetail()">PLAN-2026-01-003</a>
+                                        </td>
+                                        <td class="px-4 py-3 whitespace-nowrap" data-field="month">2026-01</td>
+                                        <td class="px-4 py-3 whitespace-nowrap" data-field="center">商务中心</td>
+                                        <td class="px-4 py-3 whitespace-nowrap" data-field="status">
+                                            <span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-600">草稿</span>
+                                        </td>
+                                        <td class="px-4 py-3 whitespace-nowrap" data-field="complete-time">-</td>
+                                        <td class="px-4 py-3 whitespace-nowrap" data-field="reporter">赵经理</td>
+                                        <td class="px-4 py-3 text-right whitespace-nowrap">
+                                            <button onclick="openPlanOrchestration()" class="table-action-btn bg-indigo-100 text-indigo-600 mr-2">编排</button>
+                                            <button onclick="openPlanAdjustment()" class="table-action-btn bg-yellow-100 text-yellow-600 mr-2">调整</button>
+                                            <button onclick="openPlanDetail()" class="table-action-btn bg-blue-100 text-blue-600">详情</button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="px-4 py-3" data-field="id">
+                                            <a href="#" class="text-indigo-600 hover:underline" onclick="openPlanDetail()">PLAN-2026-01-004</a>
+                                        </td>
+                                        <td class="px-4 py-3 whitespace-nowrap" data-field="month">2026-01</td>
+                                        <td class="px-4 py-3 whitespace-nowrap" data-field="center">供应链中心</td>
+                                        <td class="px-4 py-3 whitespace-nowrap" data-field="status">
+                                            <span class="px-2 py-1 text-xs rounded-full bg-red-100 text-red-600">已拒绝</span>
+                                        </td>
+                                        <td class="px-4 py-3 whitespace-nowrap" data-field="complete-time">2026-01-12</td>
+                                        <td class="px-4 py-3 whitespace-nowrap" data-field="reporter">钱主管</td>
+                                        <td class="px-4 py-3 text-right whitespace-nowrap">
+                                            <button onclick="openPlanOrchestration()" class="table-action-btn bg-indigo-100 text-indigo-600 mr-2">编排</button>
+                                            <button onclick="openPlanAdjustment()" class="table-action-btn bg-yellow-100 text-yellow-600 mr-2">调整</button>
+                                            <button onclick="openPlanDetail()" class="table-action-btn bg-blue-100 text-blue-600">详情</button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+        </div>
+    </div>
+</body>
+</html>

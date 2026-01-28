@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>履约协同平台 - 季度重点工作</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        indigo: { 50: '#eef2ff', 500: '#6366f1', 600: '#4f46e5' },
+                        slate: { 50: '#f8fafc', 100: '#f1f5f9', 200: '#e2e8f0', 300: '#cbd5e1', 800: '#1e293b' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #F4F7FE; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .page-section { display: none; animation: fadeIn 0.3s ease-in-out; }
+        .page-section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* 导航选中样式 */
+        .nav-item.active { background-color: #eef2ff; color: #4f46e5; border-right: 3px solid #4f46e5; }
+        .center-nav.active { background-color: #eef2ff; color: #4f46e5; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+
+        /* 抽屉动画 - 改为从右侧划出 */
+        .drawer { transform: translateX(100%); transition: transform 0.3s ease-in-out; }
+        .drawer.open { transform: translateX(0); }
+        
+        /* 慢速旋转动画 */
+        @keyframes spin-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .animate-spin-slow { animation: spin-slow 3s linear infinite; }
+        
+        /* 卡片悬停动画 */
+        .card-hover { transition: all 0.3s ease; }
+        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); }
+        
+        /* 按钮交互效果 */
+        .btn-primary { transition: all 0.3s ease; }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.3); }
+        
+        /* 平滑滚动 */
+        html { scroll-behavior: smooth; }
+        
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            .sidebar { width: 240px; }
+            .main-content { margin-left: 240px; }
+            .grid-cols-3 { grid-template-columns: 1fr; }
+            .grid-cols-2 { grid-template-columns: 1fr; }
+            
+            /* 工作项卡片响应式 */
+            .work-item-card { grid-template-columns: 1fr; }
+            
+            /* 表单按钮响应式 */
+            .form-actions { position: static; margin-top: 20px; justify-content: center; }
+            
+            /* 弹窗响应式 */
+            #workItemModal .max-w-4xl { max-width: 95vw; }
+            #workItemModal table { font-size: 12px; }
+            #workItemModal th, #workItemModal td { padding: 8px; }
+        }
+        
+        /* 加载动画 */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        
+        /* 进度条动画 */
+        @keyframes progress {
+            from { width: 0%; }
+            to { width: var(--progress-width, 100%); }
+        }
+        .progress-animate { animation: progress 1.5s ease-out forwards; }
+        
+        /* 标签动画 */
+        @keyframes slideIn {
+            from { transform: translateX(-100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .slide-in { animation: slideIn 0.5s ease-out forwards; }
+        
+        /* 微交互效果 */
+        .interactive { transition: all 0.2s ease; }
+        .interactive:hover { cursor: pointer; }
+        
+        /* 表格行悬停效果 */
+        table tbody tr:hover { background-color: #f8fafc; }
+        
+        /* 表单元素焦点效果 */
+        input:focus, select:focus, textarea:focus { outline: none; ring: 2px; ring-color: #6366f1; ring-opacity: 0.5; }
+        
+        /* 卡片选中状态 - 统一所有卡片的选中视觉效果 */
+        .card-selected {
+            border-color: #4f46e5 !important; /* 选中时的边框颜色 */
+            background-color: #f8faff !important; /* 选中时的背景色 */
+            box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1) !important; /* 选中时的边框阴影效果 */
+            transition: all 0.3s ease !important; /* 平滑过渡效果 */
+        }
+        
+        /* 季度切换按钮样式 */
+        .quarter-btn {
+            transition: all 0.3s ease;
+        }
+        .quarter-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .quarter-btn.active {
+            background-color: #eef2ff;
+            border-color: #4f46e5;
+            color: #4f46e5;
+        }
+        
+        /* 进度条样式 */
+        .progress-bar {
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            transition: width 1s ease;
+        }
+    </style>
+    <script>
+        // 初始化Lucide图标
+        lucide.createIcons();
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 初始化季度切换按钮
+            initializeQuarterButtons();
+            // 初始化筛选和排序功能
+            initializeFilterSort();
+            // 初始化文件预览弹窗
+            initializeFilePreview();
+        });
+
+        // 初始化季度切换按钮
+        function initializeQuarterButtons() {
+            const quarterButtons = document.querySelectorAll('.quarter-btn');
+            quarterButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    // 移除所有按钮的选中状态
+                    quarterButtons.forEach(btn => btn.classList.remove('active'));
+                    // 添加当前按钮的选中状态
+                    this.classList.add('active');
+                    // 这里可以添加切换季度数据的逻辑
+                    console.log('切换到季度:', this.dataset.quarter);
+                });
+            });
+        }
+
+        // 初始化筛选和排序功能
+        function initializeFilterSort() {
+            // 筛选功能
+            const filterElements = document.querySelectorAll('.filter-select');
+            filterElements.forEach(element => {
+                element.addEventListener('change', function() {
+                    console.log('筛选条件变更:', this.name, this.value);
+                    // 这里可以添加筛选逻辑
+                });
+            });
+
+            // 排序功能
+            const sortElements = document.querySelectorAll('.sort-select');
+            sortElements.forEach(element => {
+                element.addEventListener('change', function() {
+                    console.log('排序条件变更:', this.name, this.value);
+                    // 这里可以添加排序逻辑
+                });
+            });
+        }
+
+        // 初始化文件预览弹窗
+        function initializeFilePreview() {
+            const previewButton = document.getElementById('previewButton');
+            const previewModal = document.getElementById('filePreviewModal');
+            const closePreviewModal = document.getElementById('closePreviewModal');
+
+            if (previewButton && previewModal && closePreviewModal) {
+                previewButton.addEventListener('click', function() {
+                    previewModal.classList.remove('hidden');
+                });
+
+                closePreviewModal.addEventListener('click', function() {
+                    previewModal.classList.add('hidden');
+                });
+            }
+        }
+
+        // 页面导航函数
+        function navigateTo(page) {
+            window.location.href = page;
+        }
+
+        function switchPage(pageId, event) {
+            // 阻止事件冒泡，确保按钮点击优先级高于卡片展开
+            if (event) {
+                event.stopPropagation();
+            }
+            // 隐藏所有页面
+            document.querySelectorAll('.page-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            // 显示目标页面
+            document.getElementById(pageId).classList.add('active');
+            // 更新页面标题
+            if (pageId === 'quarterly-dashboard') {
+                document.getElementById('pageTitle').textContent = '季度重点工作台账';
+            } else if (pageId === 'quarterly-create') {
+                document.getElementById('pageTitle').textContent = '季度重点工作编制';
+            } else if (pageId === 'quarterly-detail') {
+                document.getElementById('pageTitle').textContent = '季度重点工作详情';
+            }
+        }
+
+        // 打开季度重点工作编制页面
+        function openQuarterlyCreate() {
+            switchPage('quarterly-create');
+        }
+
+        // 打开季度重点工作详情页面
+        function openQuarterlyDetail() {
+            switchPage('quarterly-detail');
+        }
+
+        // 更新统计时间
+        function updateStatisticsTime() {
+            const now = new Date();
+            const formattedTime = now.getFullYear() + '/' + 
+                                 String(now.getMonth() + 1).padStart(2, '0') + '/' + 
+                                 String(now.getDate()).padStart(2, '0') + ' ' + 
+                                 String(now.getHours()).padStart(2, '0') + ':' + 
+                                 String(now.getMinutes()).padStart(2, '0');
+            document.getElementById('statisticsTime').textContent = formattedTime;
+            alert('统计时间已更新');
+        }
+
+        // 提交季度重点工作编制
+        function submitQuarterlyCreate() {
+            alert('季度重点工作编制已提交');
+            switchPage('quarterly-dashboard');
+        }
+
+        // 保存季度重点工作编制草稿
+        function saveQuarterlyDraft() {
+            alert('季度重点工作编制已保存');
+        }
+
+        // 添加重点工作项
+        function addWorkItem() {
+            const container = document.getElementById('workItemsContainer');
+            if (container) {
+                const newItem = document.createElement('div');
+                newItem.className = 'border border-slate-200 rounded-lg p-4 mb-4 bg-white';
+                newItem.innerHTML = `
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">季度指标项</label>
+                            <div class="flex gap-2">
+                                <select class="flex-1 px-4 py-2 border border-slate-200 rounded-lg">
+                                    <option value="">请选择</option>
+                                    <option value="design">设计完成率</option>
+                                    <option value="tech">技术支持及时率</option>
+                                    <option value="business">商务谈判成功率</option>
+                                    <option value="supply">供应链交付及时率</option>
+                                </select>
+                                <input type="text" class="flex-1 px-4 py-2 border border-slate-200 rounded-lg" placeholder="或手填">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">指标描述</label>
+                            <input type="text" class="w-full px-4 py-2 border border-slate-200 rounded-lg" placeholder="选填">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">指标值</label>
+                            <input type="number" class="w-full px-4 py-2 border border-slate-200 rounded-lg" placeholder="0">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">风险提示阈值</label>
+                            <input type="number" class="w-full px-4 py-2 border border-slate-200 rounded-lg" placeholder="选填">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">达成截止时间</label>
+                            <input type="date" class="w-full px-4 py-2 border border-slate-200 rounded-lg">
+                        </div>
+                        <div class="flex items-end">
+                            <button type="button" onclick="removeWorkItem(this)" class="w-full px-4 py-2 border border-red-200 bg-red-50 text-red-600 rounded-lg hover:bg-red-100">
+                                <i data-lucide="trash-2" class="w-4 h-4 inline mr-1"></i> 移除
+                            </button>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(newItem);
+                // 重新渲染图标
+                lucide.createIcons();
+            }
+        }
+
+        // 移除重点工作项
+        function removeWorkItem(button) {
+            const item = button.closest('.border.border-slate-200.rounded-lg.p-4.mb-4.bg-white');
+            if (item) {
+                item.remove();
+            }
+        }
+
+        // 切换组织菜单
+        function toggleOrgMenu() {
+            const menu = document.getElementById('orgMenu');
+            menu.classList.toggle('hidden');
+        }
+
+        // 更改组织
+        function changeOrg(org) {
+            document.getElementById('currentOrg').textContent = org;
+            document.getElementById('orgMenu').classList.add('hidden');
+        }
+    </script>
+</head>
+<body class="text-slate-600 h-screen flex overflow-hidden font-sans">
+
+    <!-- 主内容区 -->
+    <div class="flex-1 flex flex-col overflow-hidden">
+        <!-- 内容区域 -->
+        <main class="flex-1 overflow-y-auto p-6 bg-slate-50">
+            <!-- 季度重点工作台账页面 -->
+            <div id="quarterly-dashboard" class="page-section active">
+                <!-- 季度切换区 -->
+                <div class="mb-6">
+                    <h2 class="text-lg font-semibold text-slate-800 mb-4">季度重点工作</h2>
+                    <div class="flex flex-wrap gap-3">
+                        <!-- 季度按钮 - 按倒排顺序 -->
+                        <button class="quarter-btn active border border-slate-200 rounded-lg p-4 bg-white flex-1 min-w-[200px] card-hover" data-quarter="2026Q1">
+                            <div class="font-medium text-slate-800">2026年第一季度</div>
+                            <div class="text-sm text-slate-500 mt-1">2026/01/01 - 2026/03/31</div>
+                            <div class="text-xs text-green-600 mt-1">已编制</div>
+                        </button>
+                        <button class="quarter-btn border border-slate-200 rounded-lg p-4 bg-white flex-1 min-w-[200px] card-hover" data-quarter="2025Q4">
+                            <div class="font-medium text-slate-800">2025年第四季度</div>
+                            <div class="text-sm text-slate-500 mt-1">2025/10/01 - 2025/12/31</div>
+                            <div class="text-xs text-green-600 mt-1">已编制</div>
+                        </button>
+                        <button class="quarter-btn border border-slate-200 rounded-lg p-4 bg-white flex-1 min-w-[200px] card-hover" data-quarter="2025Q3">
+                            <div class="font-medium text-slate-800">2025年第三季度</div>
+                            <div class="text-sm text-slate-500 mt-1">2025/07/01 - 2025/09/30</div>
+                            <div class="text-xs text-green-600 mt-1">已编制</div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 顶部编制提示条 -->
+                <div class="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-6 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="info" class="w-5 h-5 text-blue-600"></i>
+                        <span class="text-blue-700">商务中心2026年第一季度重点工作尚未编制，请及时提报。</span>
+                    </div>
+                    <button class="bg-blue-600 text-white px-4 py-1 rounded-lg text-sm hover:bg-blue-700 transition-colors" onclick="openQuarterlyCreate()">
+                        立即提报
+                    </button>
+                </div>
+
+                <!-- 统计时间和操作按钮 -->
+                <div class="flex flex-wrap items-center justify-between mb-6 gap-4">
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm text-slate-500">统计时间：</span>
+                        <span id="statisticsTime" class="text-sm font-medium text-slate-800">2026/01/28 10:30</span>
+                        <button class="text-indigo-600 hover:text-indigo-800 text-sm" onclick="updateStatisticsTime()">
+                            <i data-lucide="refresh-cw" class="w-4 h-4 inline mr-1"></i> 更新
+                        </button>
+                    </div>
+                    <div class="flex gap-2">
+                        <button id="previewButton" class="border border-slate-200 bg-white px-4 py-2 rounded-lg text-sm hover:bg-slate-50 transition-colors">
+                            <i data-lucide="file-text" class="w-4 h-4 inline mr-1"></i> 重点工作文件预览
+                        </button>
+                        <button class="border border-slate-200 bg-white px-4 py-2 rounded-lg text-sm hover:bg-slate-50 transition-colors">
+                            <i data-lucide="edit" class="w-4 h-4 inline mr-1"></i> 重点工作调整
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 筛选和排序 -->
+                <div class="bg-white border border-slate-200 rounded-lg p-4 mb-6">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">季度</label>
+                            <select class="filter-select w-full px-4 py-2 border border-slate-200 rounded-lg" name="quarter">
+                                <option value="">全部</option>
+                                <option value="2026Q1">2026年第一季度</option>
+                                <option value="2025Q4">2025年第四季度</option>
+                                <option value="2025Q3">2025年第三季度</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">支持中心</label>
+                            <select class="filter-select w-full px-4 py-2 border border-slate-200 rounded-lg" name="supportCenter">
+                                <option value="">全部</option>
+                                <option value="design">设计中心</option>
+                                <option value="tech">技术中心</option>
+                                <option value="business">商务中心</option>
+                                <option value="supply">供应链中心</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">指标项</label>
+                            <select class="filter-select w-full px-4 py-2 border border-slate-200 rounded-lg" name="indicator">
+                                <option value="">全部</option>
+                                <option value="designRate">设计完成率</option>
+                                <option value="techRate">技术支持及时率</option>
+                                <option value="businessRate">商务谈判成功率</option>
+                                <option value="supplyRate">供应链交付及时率</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">责任人</label>
+                            <select class="filter-select w-full px-4 py-2 border border-slate-200 rounded-lg" name="responsible">
+                                <option value="">全部</option>
+                                <option value="zhang">张经理</option>
+                                <option value="li">李工</option>
+                                <option value="wang">王工</option>
+                                <option value="zhao">赵工</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-4">
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm font-medium text-slate-700">排序：</span>
+                            <select class="sort-select px-3 py-1 border border-slate-200 rounded-lg text-sm" name="sortBy">
+                                <option value="supportCenter">支持中心</option>
+                                <option value="deadline">截止时间</option>
+                            </select>
+                        </div>
+                        <button class="text-sm text-indigo-600 hover:text-indigo-800">
+                            <i data-lucide="filter" class="w-4 h-4 inline mr-1"></i> 重置筛选
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 重点工作台账区 -->
+                <div class="space-y-6">
+                    <!-- 设计中心分组 -->
+                    <div class="border border-slate-200 rounded-lg bg-white overflow-hidden">
+                        <div class="bg-slate-50 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+                            <h3 class="font-medium text-slate-800">设计中心</h3>
+                            <span class="text-sm text-slate-500">共3项</span>
+                        </div>
+                        <div class="p-4 space-y-4">
+                            <!-- 设计中心卡片1 -->
+                            <div class="border border-slate-200 rounded-lg p-4 card-hover">
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                                    <div>
+                                        <div class="text-sm font-medium text-slate-700">指标项</div>
+                                        <div class="text-lg font-bold text-slate-800">设计完成率</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-sm font-medium text-slate-700">指标值</div>
+                                        <div class="text-lg font-bold text-green-600">95%</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-sm font-medium text-slate-700">达成截止时间</div>
+                                        <div class="text-lg font-bold text-slate-800">2026/03/31</div>
+                                    </div>
+                                </div>
+                                <div class="mb-4">
+                                    <div class="text-sm font-medium text-slate-700 mb-2">指标项描述</div>
+                                    <div class="text-sm text-slate-600">本季度完成所有建筑设计项目的施工图设计，确保设计质量和进度。</div>
+                                </div>
+                                <div class="mb-4">
+                                    <div class="text-sm font-medium text-slate-700 mb-2">指标进度</div>
+                                    <div class="progress-bar bg-slate-200">
+                                        <div class="progress-bar-fill bg-green-500" style="width: 95%"></div>
+                                    </div>
+                                    <div class="flex items-center justify-between mt-1">
+                                        <span class="text-xs text-slate-500">0%</span>
+                                        <span class="text-xs font-medium text-slate-700">95%</span>
+                                        <span class="text-xs text-slate-500">100%</span>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                    <div>
+                                        <div class="text-sm font-medium text-slate-700">支持中心</div>
+                                        <div class="text-sm text-slate-600">设计中心</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-sm font-medium text-slate-700">责任人</div>
+                                        <div class="text-sm text-slate-600">李工</div>
+                                    </div>
+                                </div>
+                                <div class="flex justify-end">
+                                    <button class="border border-indigo-200 bg-indigo-50 text-indigo-600 px-4 py-2 rounded-lg text-sm hover:bg-indigo-100 transition-colors">
+                                        指标详情
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- 设计中心卡片2 -->
+                            <div class="border border-slate-200 rounded-lg p-4 card-hover">
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                                    <div>
+                                        <div class="text-sm font-medium text-slate-700">指标项</div>
+                                        <div class="text-lg font-bold text-slate-800">设计变更率</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-sm font-medium text-slate-700">指标值</div>
+                                        <div class="text-lg font-bold text-yellow-600">8%</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-sm font-medium text-slate-700">达成截止时间</div>
+                                        <div class="text-lg font-bold text-slate-800">2026/03/31</div>
+                                    </div>
+                                </div>
+                                <div class="mb-4">
+                                    <div class="text-sm font-medium text-slate-700 mb-2">指标项描述</div>
+                                    <div class="text-sm text-slate-600">控制设计变更率在10%以内，减少因设计变更导致的项目延误。</div>
+                                </div>
+                                <div class="mb-4">
+                                    <div class="text-sm font-medium text-slate-700 mb-2">指标进度</div>
+                                    <div class="progress-bar bg-slate-200">
+                                        <div class="progress-bar-fill bg-yellow-500" style="width: 80%"></div>
+                                    </div>
+                                    <div class="flex items-center justify-between mt-1">
+                                        <span class="text-xs text-slate-500">0%</span>
+                                        <span class="text-xs font-medium text-slate-700">80%</span>
+                                        <span class="text-xs text-slate-500">100%</span>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                    <div>
+                                        <div class="text-sm font-medium text-slate-700">支持中心</div>
+                                        <div class="text-sm text-slate-600">设计中心</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-sm font-medium text-slate-700">责任人</div>
+                                        <div class="text-sm text-slate-600">王工</div>
+                                    </div>
+                                </div>
+                                <div class="flex justify-end">
+                                    <button class="border border-indigo-200 bg-indigo-50 text-indigo-600 px-4 py-2 rounded-lg text-sm hover:bg-indigo-100 transition-colors">
+                                        指标详情
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 技术中心分组 -->
+                    <div class="border border-slate-200 rounded-lg bg-white overflow-hidden">
+                        <div class="bg-slate-50 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+                            <h3 class="font-medium text-slate-800">技术中心</h3>
+                            <span class="text-sm text-slate-500">共2项</span>
+                        </div>
+                        <div class="p-4 space-y-4">
+                            <!-- 技术中心卡片1 -->
+                            <div class="border border-slate-200 rounded-lg p-4 card-hover">
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                                    <div>
+                                        <div class="text-sm font-medium text-slate-700">指标项</div>
+                                        <div class="text-lg font-bold text-slate-800">技术支持及时率</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-sm font-medium text-slate-700">指标值</div>
+                                        <div class="text-lg font-bold text-green-600">98%</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-sm font-medium text-slate-700">达成截止时间</div>
+                                        <div class="text-lg font-bold text-slate-800">2026/03/31</div>
+                                    </div>
+                                </div>
+                                <div class="mb-4">
+                                    <div class="text-sm font-medium text-slate-700 mb-2">指标项描述</div>
+                                    <div class="text-sm text-slate-600">确保技术支持请求在24小时内响应，48小时内提供解决方案。</div>
+                                </div>
+                                <div class="mb-4">
+                                    <div class="text-sm font-medium text-slate-700 mb-2">指标进度</div>
+                                    <div class="progress-bar bg-slate-200">
+                                        <div class="progress-bar-fill bg-green-500" style="width: 98%"></div>
+                                    </div>
+                                    <div class="flex items-center justify-between mt-1">
+                                        <span class="text-xs text-slate-500">0%</span>
+                                        <span class="text-xs font-medium text-slate-700">98%</span>
+                                        <span class="text-xs text-slate-500">100%</span>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                    <div>
+                                        <div class="text-sm font-medium text-slate-700">支持中心</div>
+                                        <div class="text-sm text-slate-600">技术中心</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-sm font-medium text-slate-700">责任人</div>
+                                        <div class="text-sm text-slate-600">赵工</div>
+                                    </div>
+                                </div>
+                                <div class="flex justify-end">
+                                    <button class="border border-indigo-200 bg-indigo-50 text-indigo-600 px-4 py-2 rounded-lg text-sm hover:bg-indigo-100 transition-colors">
+                                        指标详情
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 商务中心分组（未编制） -->
+                    <div class="border border-slate-200 rounded-lg bg-white overflow-hidden">
+                        <div class="bg-slate-50 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+                            <h3 class="font-medium text-slate-800">商务中心</h3>
+                            <span class="text-sm text-slate-500">共0项</span>
+                        </div>
+                        <div class="p-8 flex flex-col items-center justify-center text-center">
+                            <i data-lucide="file-plus" class="w-12 h-12 text-slate-300 mb-4"></i>
+                            <p class="text-slate-500 mb-4">商务中心2026年第一季度重点工作尚未编制</p>
+                            <button class="bg-indigo-600 text-white px-6 py-2 rounded-lg text-sm hover:bg-indigo-700 transition-colors" onclick="openQuarterlyCreate()">
+                                立即提报
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 季度重点工作编制页面 -->
+            <div id="quarterly-create" class="page-section">
+                <div class="bg-white border border-slate-200 rounded-lg p-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">季度</label>
+                            <select class="w-full px-4 py-2 border border-slate-200 rounded-lg">
+                                <option value="2026Q1">2026年第一季度</option>
+                                <option value="2025Q4">2025年第四季度</option>
+                                <option value="2025Q3">2025年第三季度</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">支持中心</label>
+                            <select class="w-full px-4 py-2 border border-slate-200 rounded-lg">
+                                <option value="business">商务中心</option>
+                                <option value="design">设计中心</option>
+                                <option value="tech">技术中心</option>
+                                <option value="supply">供应链中心</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">提报人员</label>
+                            <input type="text" class="w-full px-4 py-2 border border-slate-200 rounded-lg" value="张经理" readonly>
+                        </div>
+                    </div>
+
+                    <div class="mb-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="font-medium text-slate-800">重点工作清单上报</h3>
+                            <button class="border border-indigo-200 bg-indigo-50 text-indigo-600 px-4 py-2 rounded-lg text-sm hover:bg-indigo-100 transition-colors" onclick="addWorkItem()">
+                                <i data-lucide="plus" class="w-4 h-4 inline mr-1"></i> 新增
+                            </button>
+                        </div>
+                        <div id="workItemsContainer" class="space-y-4">
+                            <!-- 工作项1 -->
+                            <div class="border border-slate-200 rounded-lg p-4 mb-4 bg-white">
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-2">季度指标项</label>
+                                        <div class="flex gap-2">
+                                            <select class="flex-1 px-4 py-2 border border-slate-200 rounded-lg">
+                                                <option value="">请选择</option>
+                                                <option value="design">设计完成率</option>
+                                                <option value="tech">技术支持及时率</option>
+                                                <option value="business">商务谈判成功率</option>
+                                                <option value="supply">供应链交付及时率</option>
+                                            </select>
+                                            <input type="text" class="flex-1 px-4 py-2 border border-slate-200 rounded-lg" placeholder="或手填">
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-2">指标描述</label>
+                                        <input type="text" class="w-full px-4 py-2 border border-slate-200 rounded-lg" placeholder="选填">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-2">指标值</label>
+                                        <input type="number" class="w-full px-4 py-2 border border-slate-200 rounded-lg" placeholder="0">
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-2">风险提示阈值</label>
+                                        <input type="number" class="w-full px-4 py-2 border border-slate-200 rounded-lg" placeholder="选填">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-2">达成截止时间</label>
+                                        <input type="date" class="w-full px-4 py-2 border border-slate-200 rounded-lg" value="2026-03-31">
+                                    </div>
+                                    <div class="flex items-end">
+                                        <button type="button" onclick="removeWorkItem(this)" class="w-full px-4 py-2 border border-red-200 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors">
+                                            <i data-lucide="trash-2" class="w-4 h-4 inline mr-1"></i> 移除
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end gap-4 pt-4 border-t border-slate-200">
+                        <button class="border border-slate-200 bg-white px-6 py-2 rounded-lg text-sm hover:bg-slate-50 transition-colors" onclick="saveQuarterlyDraft()">
+                            保存
+                        </button>
+                        <button class="bg-indigo-600 text-white px-6 py-2 rounded-lg text-sm hover:bg-indigo-700 transition-colors" onclick="submitQuarterlyCreate()">
+                            提交
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 季度重点工作详情页面 -->
+            <div id="quarterly-detail" class="page-section">
+                <div class="bg-white border border-slate-200 rounded-lg p-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">季度</label>
+                            <input type="text" class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50" value="2026年第一季度" readonly>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">支持中心</label>
+                            <input type="text" class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50" value="设计中心" readonly>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">提报人员</label>
+                            <input type="text" class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50" value="李工" readonly>
+                        </div>
+                    </div>
+
+                    <div class="mb-6">
+                        <h3 class="font-medium text-slate-800 mb-4">重点工作清单</h3>
+                        <div class="space-y-4">
+                            <!-- 工作项1 -->
+                            <div class="border border-slate-200 rounded-lg p-4 bg-white">
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-2">季度指标项</label>
+                                        <input type="text" class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50" value="设计完成率" readonly>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-2">指标描述</label>
+                                        <input type="text" class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50" value="本季度完成所有建筑设计项目的施工图设计，确保设计质量和进度。" readonly>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-2">指标值</label>
+                                        <input type="text" class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50" value="95%" readonly>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-2">风险提示阈值</label>
+                                        <input type="text" class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50" value="80%" readonly>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-2">达成截止时间</label>
+                                        <input type="text" class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50" value="2026/03/31" readonly>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 工作项2 -->
+                            <div class="border border-slate-200 rounded-lg p-4 bg-white">
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-2">季度指标项</label>
+                                        <input type="text" class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50" value="设计变更率" readonly>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-2">指标描述</label>
+                                        <input type="text" class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50" value="控制设计变更率在10%以内，减少因设计变更导致的项目延误。" readonly>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-2">指标值</label>
+                                        <input type="text" class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50" value="8%" readonly>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-2">风险提示阈值</label>
+                                        <input type="text" class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50" value="10%" readonly>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-2">达成截止时间</label>
+                                        <input type="text" class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50" value="2026/03/31" readonly>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end">
+                        <button class="border border-slate-200 bg-white px-6 py-2 rounded-lg text-sm hover:bg-slate-50 transition-colors" onclick="switchPage('quarterly-dashboard')">
+                            返回
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 文件预览弹窗 -->
+    <div id="filePreviewModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg max-w-4xl w-full max-h-[80vh] overflow-hidden">
+            <div class="bg-slate-50 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+                <h3 class="font-medium text-slate-800">重点工作文件预览</h3>
+                <button id="closePreviewModal" class="text-slate-400 hover:text-slate-600">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+            <div class="p-6 overflow-auto max-h-[calc(80vh-100px)]">
+                <div class="border border-slate-200 rounded-lg p-4 bg-slate-50">
+                    <div class="text-center mb-4">
+                        <i data-lucide="file-text" class="w-16 h-16 text-slate-400 mx-auto mb-2"></i>
+                        <div class="text-lg font-medium text-slate-800">2026年第一季度重点工作计划.pdf</div>
+                        <div class="text-sm text-slate-500">文件大小：2.5MB</div>
+                    </div>
+                    <div class="border-t border-slate-200 pt-4 mt-4">
+                        <div class="text-sm font-medium text-slate-700 mb-2">文件内容预览</div>
+                        <div class="bg-white border border-slate-200 rounded-lg p-4 min-h-[300px]">
+                            <div class="text-center text-slate-400 py-10">
+                                <i data-lucide="file-search" class="w-12 h-12 text-slate-300 mx-auto mb-2"></i>
+                                <div>文件预览功能待实现</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 初始化Lucide图标 -->
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>

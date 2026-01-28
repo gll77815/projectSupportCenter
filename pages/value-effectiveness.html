@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>履约协同平台 - 价值成效明细</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        indigo: { 50: '#eef2ff', 500: '#6366f1', 600: '#4f46e5' },
+                        slate: { 50: '#f8fafc', 100: '#f1f5f9', 200: '#e2e8f0', 300: '#cbd5e1', 800: '#1e293b' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #F4F7FE; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .page-section { display: none; animation: fadeIn 0.3s ease-in-out; }
+        .page-section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* 导航选中样式 */
+        .nav-item.active { background-color: #eef2ff; color: #4f46e5; border-right: 3px solid #4f46e5; }
+        .center-nav.active { background-color: #eef2ff; color: #4f46e5; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+
+        /* 抽屉动画 - 改为从右侧划出 */
+        .drawer { transform: translateX(100%); transition: transform 0.3s ease-in-out; }
+        .drawer.open { transform: translateX(0); }
+        
+        /* 慢速旋转动画 */
+        @keyframes spin-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .animate-spin-slow { animation: spin-slow 3s linear infinite; }
+        
+        /* 卡片悬停动画 */
+        .card-hover { transition: all 0.3s ease; }
+        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); }
+        
+        /* 按钮交互效果 */
+        .btn-primary { transition: all 0.3s ease; }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.3); }
+        
+        /* 平滑滚动 */
+        html { scroll-behavior: smooth; }
+        
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            .sidebar { width: 240px; }
+            .main-content { margin-left: 240px; }
+            .grid-cols-3 { grid-template-columns: 1fr; }
+            .grid-cols-2 { grid-template-columns: 1fr; }
+        }
+        
+        /* 加载动画 */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        
+        /* 进度条动画 */
+        @keyframes progress {
+            from { width: 0%; }
+            to { width: var(--progress-width, 100%); }
+        }
+        .progress-animate { animation: progress 1.5s ease-out forwards; }
+        
+        /* 标签动画 */
+        @keyframes slideIn {
+            from { transform: translateX(-100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .slide-in { animation: slideIn 0.5s ease-out forwards; }
+        
+        /* 微交互效果 */
+        .interactive { transition: all 0.2s ease; }
+        .interactive:hover { cursor: pointer; }
+        
+        /* 表格行悬停效果 */
+        table tbody tr:hover { background-color: #f8fafc; }
+        
+        /* 表单元素焦点效果 */
+        input:focus, select:focus, textarea:focus { outline: none; ring: 2px; ring-color: #6366f1; ring-opacity: 0.5; }
+        
+        /* 分组表头样式 */
+        .group-header { background-color: #f1f5f9; font-weight: 600; }
+        .group-header:hover { background-color: #f1f5f9; }
+    </style>
+</head>
+<body class="text-slate-600 h-screen flex overflow-hidden font-sans">
+
+    <main class="flex-1 flex flex-col min-w-0 overflow-hidden relative bg-[#F4F7FE]">
+        
+        <div class="flex-1 overflow-y-auto p-6 relative scroll-smooth" id="scrollContainer">
+            
+            <div id="valueEffectiveness" class="page-section active max-w-[1600px] mx-auto space-y-6">
+                <div class="flex flex-col lg:flex-row gap-6">
+                    <!-- 左侧筛选组件 -->
+                    <div class="lg:w-64 shrink-0">
+                        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden h-full">
+                            <div class="p-4 border-b border-slate-100">
+                                <h3 class="font-bold text-sm text-slate-800">指标筛选</h3>
+                            </div>
+                            <div class="p-4">
+                                <!-- 搜索框 -->
+                                <div class="mb-4">
+                                    <div class="relative">
+                                        <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4"></i>
+                                        <input type="text" id="filterSearch" placeholder="搜索指标项" class="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                                    </div>
+                                </div>
+                                
+                                <!-- 筛选树 -->
+                                <div class="space-y-2">
+                                    <!-- 共性指标 -->
+                                    <div class="filter-group">
+                                        <div class="flex items-center justify-between cursor-pointer mb-2" onclick="toggleFilterGroup('commonGroup')">
+                                            <span class="font-medium text-sm">共性指标</span>
+                                            <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400"></i>
+                                        </div>
+                                        <div id="commonGroup" class="pl-4 space-y-1">
+                                            <div class="flex items-center gap-2 cursor-pointer py-1.5 text-sm" onclick="toggleFilterItem(this, 'supportIncome')">
+                                                <input type="checkbox" id="supportIncome" class="filter-checkbox">
+                                                <label for="supportIncome">支持增收达产</label>
+                                            </div>
+                                            <div class="flex items-center gap-2 cursor-pointer py-1.5 text-sm" onclick="toggleFilterItem(this, 'supportNode')">
+                                                <input type="checkbox" id="supportNode" class="filter-checkbox">
+                                                <label for="supportNode">支撑节点达成</label>
+                                            </div>
+                                            <div class="flex items-center gap-2 cursor-pointer py-1.5 text-sm" onclick="toggleFilterItem(this, 'projectValue')">
+                                                <input type="checkbox" id="projectValue" class="filter-checkbox">
+                                                <label for="projectValue">项目创效管理</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- 总包中心 -->
+                                    <div class="filter-group">
+                                        <div class="flex items-center justify-between cursor-pointer mb-2" onclick="toggleFilterGroup('generalContractGroup')">
+                                            <span class="font-medium text-sm">总包中心</span>
+                                            <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400"></i>
+                                        </div>
+                                        <div id="generalContractGroup" class="pl-4 space-y-1">
+                                            <div class="flex items-center gap-2 cursor-pointer py-1.5 text-sm" onclick="toggleFilterItem(this, 'projectPlanning')">
+                                                <input type="checkbox" id="projectPlanning" class="filter-checkbox">
+                                                <label for="projectPlanning">新开标准项目策划编审</label>
+                                            </div>
+                                            <div class="flex items-center gap-2 cursor-pointer py-1.5 text-sm" onclick="toggleFilterItem(this, 'professionalPlan')">
+                                                <input type="checkbox" id="professionalPlan" class="filter-checkbox">
+                                                <label for="professionalPlan">全专业计划编制</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- 技术中心 -->
+                                    <div class="filter-group">
+                                        <div class="flex items-center justify-between cursor-pointer mb-2" onclick="toggleFilterGroup('techGroup')">
+                                            <span class="font-medium text-sm">技术中心</span>
+                                            <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400"></i>
+                                        </div>
+                                        <div id="techGroup" class="pl-4 space-y-1">
+                                            <div class="flex items-center gap-2 cursor-pointer py-1.5 text-sm" onclick="toggleFilterItem(this, 'techInnovation')">
+                                                <input type="checkbox" id="techInnovation" class="filter-checkbox">
+                                                <label for="techInnovation">技术方案创新点</label>
+                                            </div>
+                                            <div class="flex items-center gap-2 cursor-pointer py-1.5 text-sm" onclick="toggleFilterItem(this, 'techPlanning')">
+                                                <input type="checkbox" id="techPlanning" class="filter-checkbox">
+                                                <label for="techPlanning">标准类项目技术策划</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- 设计中心 -->
+                                    <div class="filter-group">
+                                        <div class="flex items-center justify-between cursor-pointer mb-2" onclick="toggleFilterGroup('designGroup')">
+                                            <span class="font-medium text-sm">设计中心</span>
+                                            <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400"></i>
+                                        </div>
+                                        <div id="designGroup" class="pl-4 space-y-1">
+                                            <div class="flex items-center gap-2 cursor-pointer py-1.5 text-sm" onclick="toggleFilterItem(this, 'designPassRate')">
+                                                <input type="checkbox" id="designPassRate" class="filter-checkbox">
+                                                <label for="designPassRate">设计方案通过率</label>
+                                            </div>
+                                            <div class="flex items-center gap-2 cursor-pointer py-1.5 text-sm" onclick="toggleFilterItem(this, 'epcDesignPlanning')">
+                                                <input type="checkbox" id="epcDesignPlanning" class="filter-checkbox">
+                                                <label for="epcDesignPlanning">EPC项目设计策划管理</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- 商务中心 -->
+                                    <div class="filter-group">
+                                        <div class="flex items-center justify-between cursor-pointer mb-2" onclick="toggleFilterGroup('commerceGroup')">
+                                            <span class="font-medium text-sm">商务中心</span>
+                                            <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400"></i>
+                                        </div>
+                                        <div id="commerceGroup" class="pl-4 space-y-1">
+                                            <div class="flex items-center gap-2 cursor-pointer py-1.5 text-sm" onclick="toggleFilterItem(this, 'budgetPreparation')">
+                                                <input type="checkbox" id="budgetPreparation" class="filter-checkbox">
+                                                <label for="budgetPreparation">施工图预算编制及核对</label>
+                                            </div>
+                                            <div class="flex items-center gap-2 cursor-pointer py-1.5 text-sm" onclick="toggleFilterItem(this, 'epcBudgetControl')">
+                                                <input type="checkbox" id="epcBudgetControl" class="filter-checkbox">
+                                                <label for="epcBudgetControl">EPC项目概算管控</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- 供应链中心 -->
+                                    <div class="filter-group">
+                                        <div class="flex items-center justify-between cursor-pointer mb-2" onclick="toggleFilterGroup('supplyGroup')">
+                                            <span class="font-medium text-sm">供应链中心</span>
+                                            <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400"></i>
+                                        </div>
+                                        <div id="supplyGroup" class="pl-4 space-y-1">
+                                            <div class="flex items-center gap-2 cursor-pointer py-1.5 text-sm" onclick="toggleFilterItem(this, 'contractPlanning')">
+                                                <input type="checkbox" id="contractPlanning" class="filter-checkbox">
+                                                <label for="contractPlanning">项目合约规划编审</label>
+                                            </div>
+                                            <div class="flex items-center gap-2 cursor-pointer py-1.5 text-sm" onclick="toggleFilterItem(this, 'procurementTimeliness')">
+                                                <input type="checkbox" id="procurementTimeliness" class="filter-checkbox">
+                                                <label for="procurementTimeliness">项目采购及时性</label>
+                                            </div>
+                                            <div class="flex items-center gap-2 cursor-pointer py-1.5 text-sm" onclick="toggleFilterItem(this, 'mallEfficiency')">
+                                                <input type="checkbox" id="mallEfficiency" class="filter-checkbox">
+                                                <label for="mallEfficiency">严选商城交易创效</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="p-4 border-t border-slate-100 flex gap-2">
+                                <button class="flex-1 px-3 py-2 bg-slate-200 text-slate-700 rounded-lg text-sm hover:bg-slate-300 transition-colors" onclick="resetFilters()">
+                                    重置
+                                </button>
+                                <button class="flex-1 px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 transition-colors" onclick="applyFilters()">
+                                    应用
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 右侧表格 -->
+                    <div class="flex-1">
+                        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden h-full">
+                            <div class="p-6 border-b border-slate-100">
+                                <div class="flex flex-wrap gap-4 items-center justify-between mb-6">
+                                    <h3 class="font-bold text-lg text-slate-800">价值成效明细</h3>
+                                    <div class="flex flex-wrap gap-3">
+                                        <button class="px-3 py-1.5 bg-indigo-600 text-white text-xs rounded-md hover:bg-indigo-700 flex items-center gap-1">
+                                            <i data-lucide="download" class="w-3 h-3"></i> 导出
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                                    <div>
+                                        <label class="block text-xs text-slate-400 mb-1">服务项目</label>
+                                        <input type="text" id="serviceProjectFilter" placeholder="请输入服务项目" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs text-slate-400 mb-1">支持中心</label>
+                                        <select id="supportCenterFilter" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                                            <option value="all">全部</option>
+                                            <option value="所有中心">所有中心</option>
+                                            <option value="总包中心">总包中心</option>
+                                            <option value="技术中心">技术中心</option>
+                                            <option value="设计中心">设计中心</option>
+                                            <option value="商务中心">商务中心</option>
+                                            <option value="供应链中心">供应链中心</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs text-slate-400 mb-1">年度</label>
+                                        <select id="yearFilter" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                                            <option value="all">全部</option>
+                                            <option value="2026">2026</option>
+                                            <option value="2025">2025</option>
+                                            <option value="2024">2024</option>
+                                        </select>
+                                    </div>
+                                    <div class="flex items-end justify-end gap-3">
+                                        <button class="px-3 py-1.5 bg-slate-200 text-slate-700 text-xs rounded-md hover:bg-slate-300 flex items-center gap-1" onclick="resetTopFilters()">
+                                            <i data-lucide="refresh-cw" class="w-3 h-3"></i> 重置
+                                        </button>
+                                        <button class="px-3 py-1.5 bg-indigo-600 text-white text-xs rounded-md hover:bg-indigo-700 flex items-center gap-1" onclick="applyTopFilters()">
+                                            <i data-lucide="search" class="w-3 h-3"></i> 筛选
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-sm text-left">
+                                    <thead class="bg-slate-50 text-slate-500 font-medium">
+                                        <tr>
+                                            <th class="px-6 py-4">服务项目</th>
+                                            <th class="px-6 py-4">指标项</th>
+                                            <th class="px-6 py-4">指标值</th>
+                                            <th class="px-6 py-4">支持中心</th>
+                                            <th class="px-6 py-4">最新统计时间</th>
+                                            <th class="px-6 py-4">指标来源</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="valueTableBody" class="divide-y divide-slate-100">
+                                        <!-- 共性指标 -->
+                                        <tr data-indicator="supportIncome">
+                                            <td class="px-6 py-4">机场T3航站楼项目</td>
+                                            <td class="px-6 py-4">支持增收达产</td>
+                                            <td class="px-6 py-4 font-medium">850万元</td>
+                                            <td class="px-6 py-4"><span class="px-2 py-1 bg-green-50 text-green-600 rounded text-xs">所有中心</span></td>
+                                            <td class="px-6 py-4">2026/01/15</td>
+                                            <td class="px-6 py-4">项目管理系统</td>
+                                        </tr>
+                                        <tr data-indicator="supportNode">
+                                            <td class="px-6 py-4">二期工程项目</td>
+                                            <td class="px-6 py-4">支撑节点达成</td>
+                                            <td class="px-6 py-4 font-medium">98%</td>
+                                            <td class="px-6 py-4"><span class="px-2 py-1 bg-green-50 text-green-600 rounded text-xs">所有中心</span></td>
+                                            <td class="px-6 py-4">2026/01/14</td>
+                                            <td class="px-6 py-4">项目管理系统</td>
+                                        </tr>
+                                        <tr data-indicator="projectValue">
+                                            <td class="px-6 py-4">机场T3航站楼项目</td>
+                                            <td class="px-6 py-4">项目创效管理</td>
+                                            <td class="px-6 py-4 font-medium">3.5%</td>
+                                            <td class="px-6 py-4"><span class="px-2 py-1 bg-green-50 text-green-600 rounded text-xs">所有中心</span></td>
+                                            <td class="px-6 py-4">2026/01/13</td>
+                                            <td class="px-6 py-4">商务管理系统</td>
+                                        </tr>
+                                        
+                                        <!-- 总包中心个性指标 -->
+                                        <tr data-indicator="projectPlanning">
+                                            <td class="px-6 py-4">机场T3航站楼项目</td>
+                                            <td class="px-6 py-4">新开标准项目策划编审</td>
+                                            <td class="px-6 py-4 font-medium">25天</td>
+                                            <td class="px-6 py-4"><span class="px-2 py-1 bg-blue-50 text-blue-600 rounded text-xs">总包中心</span></td>
+                                            <td class="px-6 py-4">2026/01/12</td>
+                                            <td class="px-6 py-4">总包管理系统</td>
+                                        </tr>
+                                        <tr data-indicator="professionalPlan">
+                                            <td class="px-6 py-4">二期工程项目</td>
+                                            <td class="px-6 py-4">全专业计划编制</td>
+                                            <td class="px-6 py-4 font-medium">18%</td>
+                                            <td class="px-6 py-4"><span class="px-2 py-1 bg-blue-50 text-blue-600 rounded text-xs">总包中心</span></td>
+                                            <td class="px-6 py-4">2026/01/11</td>
+                                            <td class="px-6 py-4">总包管理系统</td>
+                                        </tr>
+                                        
+                                        <!-- 技术中心个性指标 -->
+                                        <tr data-indicator="techInnovation">
+                                            <td class="px-6 py-4">机场T3航站楼项目</td>
+                                            <td class="px-6 py-4">技术方案创新点</td>
+                                            <td class="px-6 py-4 font-medium">5个</td>
+                                            <td class="px-6 py-4"><span class="px-2 py-1 bg-purple-50 text-purple-600 rounded text-xs">技术中心</span></td>
+                                            <td class="px-6 py-4">2026/01/10</td>
+                                            <td class="px-6 py-4">技术管理系统</td>
+                                        </tr>
+                                        <tr data-indicator="techPlanning">
+                                            <td class="px-6 py-4">二期工程项目</td>
+                                            <td class="px-6 py-4">标准类项目技术策划</td>
+                                            <td class="px-6 py-4 font-medium">100%</td>
+                                            <td class="px-6 py-4"><span class="px-2 py-1 bg-purple-50 text-purple-600 rounded text-xs">技术中心</span></td>
+                                            <td class="px-6 py-4">2026/01/09</td>
+                                            <td class="px-6 py-4">技术管理系统</td>
+                                        </tr>
+                                        
+                                        <!-- 设计中心个性指标 -->
+                                        <tr data-indicator="designPassRate">
+                                            <td class="px-6 py-4">机场T3航站楼图纸深化</td>
+                                            <td class="px-6 py-4">设计方案通过率</td>
+                                            <td class="px-6 py-4 font-medium">95%</td>
+                                            <td class="px-6 py-4"><span class="px-2 py-1 bg-indigo-50 text-indigo-600 rounded text-xs">设计中心</span></td>
+                                            <td class="px-6 py-4">2026/01/08</td>
+                                            <td class="px-6 py-4">设计管理系统</td>
+                                        </tr>
+                                        <tr data-indicator="epcDesignPlanning">
+                                            <td class="px-6 py-4">机场T3航站楼图纸深化</td>
+                                            <td class="px-6 py-4">EPC项目设计策划管理</td>
+                                            <td class="px-6 py-4 font-medium">85%</td>
+                                            <td class="px-6 py-4"><span class="px-2 py-1 bg-indigo-50 text-indigo-600 rounded text-xs">设计中心</span></td>
+                                            <td class="px-6 py-4">2026/01/07</td>
+                                            <td class="px-6 py-4">设计管理系统</td>
+                                        </tr>
+                                        
+                                        <!-- 商务中心个性指标 -->
+                                        <tr data-indicator="budgetPreparation">
+                                            <td class="px-6 py-4">二期工程项目</td>
+                                            <td class="px-6 py-4">施工图预算编制及核对</td>
+                                            <td class="px-6 py-4 font-medium">55天</td>
+                                            <td class="px-6 py-4"><span class="px-2 py-1 bg-orange-50 text-orange-600 rounded text-xs">商务中心</span></td>
+                                            <td class="px-6 py-4">2026/01/06</td>
+                                            <td class="px-6 py-4">商务管理系统</td>
+                                        </tr>
+                                        <tr data-indicator="epcBudgetControl">
+                                            <td class="px-6 py-4">机场T3航站楼项目</td>
+                                            <td class="px-6 py-4">EPC项目概算管控</td>
+                                            <td class="px-6 py-4 font-medium">100%</td>
+                                            <td class="px-6 py-4"><span class="px-2 py-1 bg-orange-50 text-orange-600 rounded text-xs">商务中心</span></td>
+                                            <td class="px-6 py-4">2026/01/05</td>
+                                            <td class="px-6 py-4">商务管理系统</td>
+                                        </tr>
+                                        
+                                        <!-- 供应链中心个性指标 -->
+                                        <tr data-indicator="contractPlanning">
+                                            <td class="px-6 py-4">二期工程钢材集采</td>
+                                            <td class="px-6 py-4">项目合约规划编审</td>
+                                            <td class="px-6 py-4 font-medium">28天</td>
+                                            <td class="px-6 py-4"><span class="px-2 py-1 bg-cyan-50 text-cyan-600 rounded text-xs">供应链中心</span></td>
+                                            <td class="px-6 py-4">2025/12/20</td>
+                                            <td class="px-6 py-4">供应链系统</td>
+                                        </tr>
+                                        <tr data-indicator="procurementTimeliness">
+                                            <td class="px-6 py-4">二期工程钢材集采</td>
+                                            <td class="px-6 py-4">项目采购及时性</td>
+                                            <td class="px-6 py-4 font-medium">88%</td>
+                                            <td class="px-6 py-4"><span class="px-2 py-1 bg-cyan-50 text-cyan-600 rounded text-xs">供应链中心</span></td>
+                                            <td class="px-6 py-4">2025/12/19</td>
+                                            <td class="px-6 py-4">供应链系统</td>
+                                        </tr>
+                                        <tr data-indicator="mallEfficiency">
+                                            <td class="px-6 py-4">机场T3航站楼项目</td>
+                                            <td class="px-6 py-4">严选商城交易创效</td>
+                                            <td class="px-6 py-4 font-medium">1.5亿元</td>
+                                            <td class="px-6 py-4"><span class="px-2 py-1 bg-cyan-50 text-cyan-600 rounded text-xs">供应链中心</span></td>
+                                            <td class="px-6 py-4">2025/12/18</td>
+                                            <td class="px-6 py-4">供应链系统</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // 初始化Lucide图标
+        lucide.createIcons();
+        
+        // 导航函数
+        function navigateTo(page) {
+            window.location.href = page;
+        }
+        
+        // 切换组织菜单
+        function toggleOrgMenu() {
+            const orgMenu = document.getElementById('orgMenu');
+            orgMenu.classList.toggle('hidden');
+        }
+        
+        // 切换中心视图
+        function switchCenterView(viewName, element) {
+            // 移除所有活动状态
+            document.querySelectorAll('.center-nav').forEach(item => {
+                item.classList.remove('active');
+            });
+            // 添加当前活动状态
+            element.classList.add('active');
+            // 更新中心徽章
+            document.getElementById('centerBadge').textContent = viewName;
+        }
+        
+        // 更改组织
+        function changeOrg(orgName) {
+            document.getElementById('currentOrg').textContent = orgName;
+            toggleOrgMenu();
+        }
+        
+        // 筛选功能
+        
+        // 切换筛选组
+        function toggleFilterGroup(groupId) {
+            const group = document.getElementById(groupId);
+            const icon = group.previousElementSibling.querySelector('i');
+            group.classList.toggle('hidden');
+            if (group.classList.contains('hidden')) {
+                icon.setAttribute('data-lucide', 'chevron-right');
+            } else {
+                icon.setAttribute('data-lucide', 'chevron-down');
+            }
+            lucide.createIcons();
+        }
+        
+        // 切换筛选项
+        function toggleFilterItem(element, indicatorId) {
+            const checkbox = element.querySelector('input[type="checkbox"]');
+            checkbox.checked = !checkbox.checked;
+        }
+        
+        // 重置筛选
+        function resetFilters() {
+            document.querySelectorAll('.filter-checkbox').forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            document.getElementById('filterSearch').value = '';
+            applyFilters();
+        }
+        
+        // 应用筛选
+        function applyFilters() {
+            const checkedIndicators = [];
+            document.querySelectorAll('.filter-checkbox:checked').forEach(checkbox => {
+                checkedIndicators.push(checkbox.id);
+            });
+            
+            const rows = document.querySelectorAll('#valueTableBody tr');
+            rows.forEach(row => {
+                const indicator = row.getAttribute('data-indicator');
+                if (checkedIndicators.length === 0 || checkedIndicators.includes(indicator)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+        
+        // 搜索筛选
+        document.getElementById('filterSearch').addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            const filterItems = document.querySelectorAll('.filter-group label');
+            
+            filterItems.forEach(item => {
+                const text = item.textContent.toLowerCase();
+                const parentDiv = item.closest('.flex.items-center');
+                if (text.includes(searchTerm)) {
+                    parentDiv.style.display = '';
+                } else {
+                    parentDiv.style.display = 'none';
+                }
+            });
+        });
+        
+        // 顶部筛选项功能
+        
+        // 重置顶部筛选项
+        function resetTopFilters() {
+            document.getElementById('serviceProjectFilter').value = '';
+            document.getElementById('supportCenterFilter').value = 'all';
+            document.getElementById('yearFilter').value = 'all';
+            applyCombinedFilters();
+        }
+        
+        // 应用顶部筛选项
+        function applyTopFilters() {
+            applyCombinedFilters();
+        }
+        
+        // 应用组合筛选（顶部筛选项 + 左侧指标筛选）
+        function applyCombinedFilters() {
+            // 获取顶部筛选值
+            const serviceProject = document.getElementById('serviceProjectFilter').value.toLowerCase();
+            const supportCenter = document.getElementById('supportCenterFilter').value;
+            const year = document.getElementById('yearFilter').value;
+            
+            // 获取左侧指标筛选值
+            const checkedIndicators = [];
+            document.querySelectorAll('.filter-checkbox:checked').forEach(checkbox => {
+                checkedIndicators.push(checkbox.id);
+            });
+            
+            // 筛选表格行
+            const rows = document.querySelectorAll('#valueTableBody tr');
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                const rowServiceProject = cells[0].textContent.toLowerCase();
+                const rowSupportCenter = cells[3].textContent.trim();
+                const rowDate = cells[4].textContent;
+                const rowYear = rowDate.substring(0, 4);
+                const rowIndicator = row.getAttribute('data-indicator');
+                
+                // 检查服务项目筛选
+                const projectMatch = serviceProject === '' || rowServiceProject.includes(serviceProject);
+                
+                // 检查支持中心筛选
+                const centerMatch = supportCenter === 'all' || rowSupportCenter === supportCenter;
+                
+                // 检查年度筛选
+                const yearMatch = year === 'all' || rowYear === year;
+                
+                // 检查指标筛选
+                const indicatorMatch = checkedIndicators.length === 0 || checkedIndicators.includes(rowIndicator);
+                
+                // 显示或隐藏行
+                if (projectMatch && centerMatch && yearMatch && indicatorMatch) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+        
+        // 重写左侧筛选应用函数，确保与顶部筛选项协同工作
+        function applyFilters() {
+            applyCombinedFilters();
+        }
+        
+        // 重写左侧筛选重置函数，确保与顶部筛选项协同工作
+        function resetFilters() {
+            document.querySelectorAll('.filter-checkbox').forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            document.getElementById('filterSearch').value = '';
+            applyCombinedFilters();
+        }
+    </script>
+</body>
+</html>

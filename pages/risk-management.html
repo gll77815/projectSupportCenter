@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>履约协同平台 - 风险处置清单</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        indigo: { 50: '#eef2ff', 500: '#6366f1', 600: '#4f46e5' },
+                        slate: { 50: '#f8fafc', 100: '#f1f5f9', 200: '#e2e8f0', 300: '#cbd5e1', 800: '#1e293b' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #F4F7FE; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .page-section { display: none; animation: fadeIn 0.3s ease-in-out; }
+        .page-section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* 导航选中样式 */
+        .nav-item.active { background-color: #eef2ff; color: #4f46e5; border-right: 3px solid #4f46e5; }
+        .center-nav.active { background-color: #eef2ff; color: #4f46e5; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+
+        /* 抽屉动画 - 改为从右侧划出 */
+        .drawer { transform: translateX(100%); transition: transform 0.3s ease-in-out; }
+        .drawer.open { transform: translateX(0); }
+        
+        /* 慢速旋转动画 */
+        @keyframes spin-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .animate-spin-slow { animation: spin-slow 3s linear infinite; }
+        
+        /* 卡片悬停动画 */
+        .card-hover { transition: all 0.3s ease; }
+        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); }
+        
+        /* 按钮交互效果 */
+        .btn-primary { transition: all 0.3s ease; }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.3); }
+        
+        /* 平滑滚动 */
+        html { scroll-behavior: smooth; }
+        
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            .sidebar { width: 240px; }
+            .main-content { margin-left: 240px; }
+            .grid-cols-3 { grid-template-columns: 1fr; }
+            .grid-cols-2 { grid-template-columns: 1fr; }
+        }
+        
+        /* 加载动画 */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        
+        /* 进度条动画 */
+        @keyframes progress {
+            from { width: 0%; }
+            to { width: var(--progress-width, 100%); }
+        }
+        .progress-animate { animation: progress 1.5s ease-out forwards; }
+        
+        /* 标签动画 */
+        @keyframes slideIn {
+            from { transform: translateX(-100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .slide-in { animation: slideIn 0.5s ease-out forwards; }
+        
+        /* 微交互效果 */
+        .interactive { transition: all 0.2s ease; }
+        .interactive:hover { cursor: pointer; }
+        
+        /* 表格行悬停效果 */
+        table tbody tr:hover { background-color: #f8fafc; }
+        
+        /* 表单元素焦点效果 */
+        input:focus, select:focus, textarea:focus { outline: none; ring: 2px; ring-color: #6366f1; ring-opacity: 0.5; }
+    </style>
+</head>
+<body class="text-slate-600 h-screen flex overflow-hidden font-sans">
+
+    <!-- <aside class="w-64 bg-white border-r border-slate-100 flex flex-col flex-shrink-0 z-30 transition-all relative">
+        <div class="p-6 flex items-center gap-3 border-b border-slate-50 cursor-pointer" onclick="navigateTo('index.html')">
+            <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold shadow-md shadow-indigo-200">P</div>
+            <span class="text-lg font-bold text-slate-800">履约协同平台</span>
+        </div>
+        
+        <nav class="flex-1 px-4 mt-4 space-y-1 overflow-y-auto no-scrollbar" id="mainNav">
+            
+            <div class="mb-6 relative">
+                <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 mx-2 relative">
+                    <div class="text-[10px] text-slate-400 mb-1">当前层级</div>
+                    <div class="flex items-center justify-between cursor-pointer group" onclick="toggleOrgMenu()">
+                        <span id="currentOrg" class="text-sm font-bold text-slate-800 truncate">公司总包中心</span>
+                        <i data-lucide="chevrons-up-down" class="w-4 h-4 text-slate-400 group-hover:text-indigo-600"></i>
+                    </div>
+                    <div id="orgMenu" class="hidden absolute top-full left-2 right-2 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-50 py-2">
+                        <div onclick="changeOrg('公司总包中心')" class="text-xs p-2 hover:bg-slate-50 rounded cursor-pointer text-indigo-600 font-medium">公司总包中心</div>
+                        <div onclick="changeOrg('分公司总包中心')" class="text-xs p-2 hover:bg-slate-50 rounded cursor-pointer">分公司总包中心</div>
+                        <div onclick="changeOrg('成都项目部')" class="text-xs p-2 hover:bg-slate-50 rounded cursor-pointer">成都项目部</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-1 mb-6">
+                <div class="px-2 mb-2 text-xs font-bold text-slate-400 uppercase tracking-wider">功能模块</div>
+                
+                <button onclick="navigateTo('index.html')" id="nav-dashboard" class="nav-item w-full flex items-center gap-3 px-4 py-3 text-slate-500 rounded-xl font-medium transition-all hover:bg-slate-50">
+                    <i data-lucide="layout-dashboard" class="w-5 h-5"></i> 驾驶舱
+                </button>
+                
+                <button onclick="navigateTo('tasks.html')" id="nav-tasks" class="nav-item w-full flex items-center gap-3 px-4 py-3 text-slate-500 rounded-xl font-medium transition-all hover:bg-slate-50 relative">
+                    <i data-lucide="briefcase" class="w-5 h-5"></i> 任务大厅
+                    <span class="absolute top-1/2 right-4 transform -translate-y-1/2 px-2 py-1 bg-red-500 text-white text-xs rounded-full flex items-center justify-center shadow-md shadow-red-200 border border-red-100">99+</span>
+                </button>
+                
+                <button onclick="navigateTo('evaluation.html')" class="nav-item w-full flex items-center gap-3 px-4 py-3 text-slate-500 rounded-xl font-medium transition-all hover:bg-slate-50 relative">
+                    <i data-lucide="star" class="w-5 h-5"></i> 服务评价
+                    <span class="absolute top-1/2 right-4 transform -translate-y-1/2 px-2 py-1 bg-red-500 text-white text-xs rounded-full flex items-center justify-center shadow-md shadow-red-200 border border-red-100">20</span>
+                </button>
+                
+                <button onclick="navigateTo('performance.html')" class="nav-item w-full flex items-center gap-3 px-4 py-3 text-slate-500 rounded-xl font-medium transition-all hover:bg-slate-50 relative">
+                    <i data-lucide="trending-up" class="w-5 h-5"></i> 产值绩效
+                    <span class="absolute top-1/2 right-4 transform -translate-y-1/2 px-2 py-1 bg-red-500 text-white text-xs rounded-full flex items-center justify-center shadow-md shadow-red-200 border border-red-100">8</span>
+                </button>
+
+                <button onclick="navigateTo('risk-management.html')" class="nav-item active w-full flex items-center gap-3 px-4 py-3 text-slate-500 rounded-xl font-medium transition-all hover:bg-slate-50">
+                    <i data-lucide="alert-triangle" class="w-5 h-5"></i> 风险处置清单
+                </button>
+
+                <button onclick="navigateTo('knowledge.html')" class="nav-item w-full flex items-center gap-3 px-4 py-3 text-slate-500 rounded-xl font-medium transition-all hover:bg-slate-50">
+                    <i data-lucide="book-open" class="w-5 h-5"></i> 知识库
+                </button>
+
+                <button onclick="window.open('https://sjxk.cscec3b-iti.com/construction-management-platform-front/#/login?from=/business-registration', '_blank')" class="nav-item w-full flex items-center gap-3 px-4 py-3 text-slate-500 rounded-xl font-medium transition-all hover:bg-slate-50">
+                    <i data-lucide="users" class="w-5 h-5"></i> 工作协同管理
+                </button>
+
+                <button onclick="window.open('https://ucflowengine.cscec3b-iti.com', '_blank')" class="nav-item w-full flex items-center gap-3 px-4 py-3 text-slate-500 rounded-xl font-medium transition-all hover:bg-slate-50" style="display: none;">
+                    <i data-lucide="settings" class="w-5 h-5"></i> 工作流程管理
+                </button>
+            </div>
+
+            <div class="border-t border-slate-100 my-4"></div>
+            
+            <div class="mb-6 space-y-1">
+                <div class="px-2 mb-2 text-xs font-bold text-slate-400 uppercase tracking-wider">数据视图</div>
+                <button onclick="switchCenterView('总包中心视图', this)" class="center-nav active w-full flex items-center gap-3 px-3 py-2.5 text-slate-600 rounded-lg text-sm hover:bg-slate-50 transition-all">
+                    <span class="w-2 h-2 rounded-full bg-blue-500"></span> 总包中心视图
+                </button>
+                <button onclick="switchCenterView('设计中心视图', this)" class="center-nav w-full flex items-center gap-3 px-3 py-2.5 text-slate-600 rounded-lg text-sm hover:bg-slate-50 transition-all">
+                    <span class="w-2 h-2 rounded-full bg-purple-500"></span> 设计中心视图
+                </button>
+                <button onclick="switchCenterView('技术中心视图', this)" class="center-nav w-full flex items-center gap-3 px-3 py-2.5 text-slate-600 rounded-lg text-sm hover:bg-slate-50 transition-all">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span> 技术中心视图
+                </button>
+                <button onclick="switchCenterView('商务中心视图', this)" class="center-nav w-full flex items-center gap-3 px-3 py-2.5 text-slate-600 rounded-lg text-sm hover:bg-slate-50 transition-all">
+                    <span class="w-2 h-2 rounded-full bg-orange-500"></span> 商务中心视图
+                </button>
+                <button onclick="switchCenterView('供应链中心视图', this)" class="center-nav w-full flex items-center gap-3 px-3 py-2.5 text-slate-600 rounded-lg text-sm hover:bg-slate-50 transition-all">
+                    <span class="w-2 h-2 rounded-full bg-cyan-500"></span> 供应链中心视图
+                </button>
+                <button onclick="switchCenterView('项目视图', this)" class="center-nav w-full flex items-center gap-3 px-3 py-2.5 text-slate-600 rounded-lg text-sm hover:bg-slate-50 transition-all">
+                    <span class="w-2 h-2 rounded-full bg-pink-500"></span> 项目视图
+                </button>
+                <button onclick="switchCenterView('人员视图', this)" class="center-nav w-full flex items-center gap-3 px-3 py-2.5 text-slate-600 rounded-lg text-sm hover:bg-slate-50 transition-all">
+                    <span class="w-2 h-2 rounded-full bg-amber-500"></span> 人员视图
+                </button>
+            </div>
+
+            <div class="border-t border-slate-100 my-4"></div>
+
+        </nav>
+
+        <div class="p-4 border-t border-slate-100">
+            <div onclick="navigateTo('profile.html')" class="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors group">
+                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" class="w-10 h-10 rounded-full bg-indigo-50 border-2 border-transparent group-hover:border-indigo-200" alt="User">
+                <div class="overflow-hidden">
+                    <div class="text-sm font-bold text-slate-800">张经理</div>
+                    <div class="text-xs text-slate-400 truncate">个人中心 &gt;</div>
+                </div>
+            </div>
+        </div>
+    </aside> -->
+
+    <main class="flex-1 flex flex-col min-w-0 overflow-hidden relative bg-[#F4F7FE]">
+        
+        <!-- <header class="bg-white/80 backdrop-blur-md sticky top-0 z-20 px-8 py-4 flex justify-between items-center border-b border-slate-100 shadow-sm">
+            <div>
+                <div class="flex items-center gap-2">
+                    <h1 id="pageTitle" class="text-2xl font-bold text-slate-800">风险处置清单</h1>
+                    <span id="centerBadge" class="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full font-bold">总包中心</span>
+                </div>
+                <p class="text-slate-400 text-sm mt-1">数据更新时间: 2026/01/15 09:30</p>
+            </div>
+            <div class="flex items-center gap-4">
+                
+
+                <div class="h-6 w-px bg-slate-200 mx-2"></div>
+
+                <div class="relative">
+                    <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4"></i>
+                    <input type="text" placeholder="搜索风险..." class="pl-10 pr-4 py-2 bg-slate-100 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100 w-48 border-transparent transition-all focus:w-64">
+                </div>
+                <button onclick="navigateTo('notifications.html')" class="relative p-2 bg-white rounded-full hover:bg-slate-50 border border-slate-100 shadow-sm">
+                    <i data-lucide="bell" class="w-5 h-5 text-slate-600"></i>
+                    <span class="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full"></span>
+                </button>
+            </div>
+        </header> -->
+
+        <div class="flex-1 overflow-y-auto p-6 relative scroll-smooth" id="scrollContainer">
+            
+            <div id="riskManagement" class="page-section active max-w-[1600px] mx-auto space-y-6">
+                <!-- 态势指标卡片 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-blue-50 rounded-2xl p-5 shadow-sm border border-blue-100 hover:shadow-md transition-shadow cursor-pointer" onclick="filterByStatus('pending')">
+                        <div class="flex items-center gap-2 mb-3">
+                            <i data-lucide="clipboard-list" class="w-5 h-5 text-blue-500"></i>
+                            <h3 class="font-bold text-slate-800">待处置风险</h3>
+                        </div>
+                        <p class="text-3xl font-bold text-slate-800">15</p>
+                        <p class="text-xs text-slate-400 mt-1">等待处置的风险项目</p>
+                    </div>
+                    <div class="bg-red-50 rounded-2xl p-5 shadow-sm border border-red-100 hover:shadow-md transition-shadow cursor-pointer" onclick="filterByStatus('overdue')">
+                        <div class="flex items-center gap-2 mb-3">
+                            <i data-lucide="alert-circle" class="w-5 h-5 text-red-500"></i>
+                            <h3 class="font-bold text-slate-800">超期风险</h3>
+                        </div>
+                        <p class="text-3xl font-bold text-slate-800">5</p>
+                        <p class="text-xs text-slate-400 mt-1">已超过处置截止时间的风险</p>
+                    </div>
+                    <div class="bg-green-50 rounded-2xl p-5 shadow-sm border border-green-100 hover:shadow-md transition-shadow cursor-pointer" onclick="filterByStatus('completed')">
+                        <div class="flex items-center gap-2 mb-3">
+                            <i data-lucide="check-circle" class="w-5 h-5 text-green-500"></i>
+                            <h3 class="font-bold text-slate-800">已处置风险</h3>
+                        </div>
+                        <p class="text-3xl font-bold text-slate-800">30</p>
+                        <p class="text-xs text-slate-400 mt-1">已完成处置的风险项目</p>
+                    </div>
+                    <div class="bg-yellow-50 rounded-2xl p-5 shadow-sm border border-yellow-100 hover:shadow-md transition-shadow cursor-pointer" onclick="filterByPriority('high')">
+                        <div class="flex items-center gap-2 mb-3">
+                            <i data-lucide="flag" class="w-5 h-5 text-yellow-500"></i>
+                            <h3 class="font-bold text-slate-800">高优先级风险</h3>
+                        </div>
+                        <p class="text-3xl font-bold text-slate-800">8</p>
+                        <p class="text-xs text-slate-400 mt-1">需要重点关注的风险项目</p>
+                    </div>
+                </div>
+                
+
+
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div class="p-6 border-b border-slate-100">
+                        <div class="flex flex-wrap gap-4 items-center justify-between mb-6">
+                            <h3 class="font-bold text-lg text-slate-800">风险处置清单</h3>
+                            <div class="flex flex-wrap gap-3">
+                                <button class="px-3 py-1.5 bg-slate-200 text-slate-700 text-xs rounded-md hover:bg-slate-300 flex items-center gap-1" id="batchAssignBtn" disabled>
+                                    <i data-lucide="user-plus" class="w-3 h-3"></i> 指派
+                                </button>
+                                <button class="px-3 py-1.5 bg-slate-200 text-slate-700 text-xs rounded-md hover:bg-slate-300 flex items-center gap-1" id="batchExecuteBtn" disabled>
+                                    <i data-lucide="play-circle" class="w-3 h-3"></i> 执行
+                                </button>
+                                <button class="px-3 py-1.5 bg-slate-200 text-slate-700 text-xs rounded-md hover:bg-slate-300 flex items-center gap-1" id="batchSuperviseBtn" disabled>
+                                    <i data-lucide="eye" class="w-3 h-3"></i> 督办
+                                </button>
+                                <button class="px-3 py-1.5 bg-slate-200 text-slate-700 text-xs rounded-md hover:bg-slate-300 flex items-center gap-1" id="batchTransferBtn" disabled>
+                                    <i data-lucide="repeat" class="w-3 h-3"></i> 转派
+                                </button>
+                                <button class="px-3 py-1.5 bg-slate-200 text-slate-700 text-xs rounded-md hover:bg-slate-300 flex items-center gap-1" id="batchTerminateBtn" disabled>
+                                    <i data-lucide="x-circle" class="w-3 h-3"></i> 终止
+                                </button>
+                                <button class="px-3 py-1.5 bg-indigo-600 text-white text-xs rounded-md hover:bg-indigo-700 flex items-center gap-1">
+                                    <i data-lucide="download" class="w-3 h-3"></i> 导出
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                            <div>
+                                <label class="block text-xs text-slate-400 mb-1">风险名称</label>
+                                <input type="text" placeholder="请输入风险名称" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-400 mb-1">风险类型</label>
+                                <select class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                                    <option>全部</option>
+                                    <option>技术风险</option>
+                                    <option>安全风险</option>
+                                    <option>质量风险</option>
+                                    <option>进度风险</option>
+                                    <option>成本风险</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-400 mb-1">支持中心</label>
+                                <select class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                                    <option>全部</option>
+                                    <option>设计中心</option>
+                                    <option>技术中心</option>
+                                    <option>供应链中心</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-400 mb-1">处置人</label>
+                                <select class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                                    <option>全部</option>
+                                    <option>张经理</option>
+                                    <option>李设计</option>
+                                    <option>王总工</option>
+                                    <option>王采购</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                            <div>
+                                <label class="block text-xs text-slate-400 mb-1">处置时间范围</label>
+                                <div class="flex items-center gap-2">
+                                    <input type="date" class="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                                    <span class="text-slate-400">-</span>
+                                    <input type="date" class="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-400 mb-1">处置结果</label>
+                                <select class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                                    <option>全部</option>
+                                    <option>已处置</option>
+                                    <option>未处置</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-400 mb-1">超期状态</label>
+                                <select class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                                    <option>全部</option>
+                                    <option>超期</option>
+                                    <option>未超期</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-400 mb-1">排序方式</label>
+                                <select class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100" onchange="sortBy(this.value)">
+                                    <option value="deadline-desc">处置截止时间倒排</option>
+                                    <option value="deadline-asc">处置截止时间正排</option>
+                                    <option value="created-desc">创建时间倒排</option>
+                                    <option value="created-asc">创建时间正排</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="flex flex-wrap gap-3 justify-end">
+                            <button class="px-3 py-1.5 bg-slate-200 text-slate-700 text-xs rounded-md hover:bg-slate-300 flex items-center gap-1">
+                                <i data-lucide="refresh-cw" class="w-3 h-3"></i> 重置
+                            </button>
+                            <button class="px-3 py-1.5 bg-indigo-600 text-white text-xs rounded-md hover:bg-indigo-700 flex items-center gap-1">
+                                <i data-lucide="search" class="w-3 h-3"></i> 筛选
+                            </button>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-slate-50 text-slate-500 font-medium">
+                                <tr>
+                                    <th class="px-6 py-4 w-12">
+                                        <input type="checkbox" id="selectAll" class="rounded text-indigo-600 focus:ring-indigo-500" onchange="toggleSelectAll()">
+                                    </th>
+                                    <th class="px-6 py-4">风险名称</th>
+                                    <th class="px-6 py-4">风险类型</th>
+                                    <th class="px-6 py-4">风险描述</th>
+                                    <th class="px-6 py-4">处置截止时间</th>
+                                    <th class="px-6 py-4">处置人</th>
+                                    <th class="px-6 py-4">支持中心</th>
+                                    <th class="px-6 py-4">处置时间</th>
+                                    <th class="px-6 py-4">处置结果</th>
+                                    <th class="px-6 py-4">超期状态</th>
+                                    <th class="px-6 py-4 text-right">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <tr>
+                                    <td class="px-6 py-4">
+                                        <input type="checkbox" class="risk-checkbox rounded text-indigo-600 focus:ring-indigo-500" onchange="toggleBatchButtons()">
+                                    </td>
+                                    <td class="px-6 py-4 font-medium">机场T3航站楼结构安全风险</td>
+                                    <td class="px-6 py-4"><span class="px-2 py-1 bg-red-50 text-red-600 rounded text-xs">安全风险</span></td>
+                                    <td class="px-6 py-4 text-indigo-600 hover:underline cursor-pointer" onclick="openRiskDetail('机场T3航站楼结构安全风险')">结构设计可能存在安全隐患，需要专业评估</td>
+                                    <td class="px-6 py-4">2026/01/20</td>
+                                    <td class="px-6 py-4">王总工</td>
+                                    <td class="px-6 py-4"><span class="px-2 py-1 bg-purple-50 text-purple-600 rounded text-xs">技术中心</span></td>
+                                    <td class="px-6 py-4">-</td>
+                                    <td class="px-6 py-4"><span class="px-2 py-1 bg-yellow-50 text-yellow-600 rounded text-xs">未处置</span></td>
+                                    <td class="px-6 py-4"><span class="px-2 py-1 bg-green-50 text-green-600 rounded text-xs">未超期</span></td>
+                                    <td class="px-6 py-4 text-right">
+                                        <button class="text-indigo-600 hover:underline mr-3" onclick="openRiskDetail('机场T3航站楼结构安全风险')">查看详情</button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="px-6 py-4">
+                                        <input type="checkbox" class="risk-checkbox rounded text-indigo-600 focus:ring-indigo-500" onchange="toggleBatchButtons()">
+                                    </td>
+                                    <td class="px-6 py-4 font-medium">二期工程材料供应延误风险</td>
+                                    <td class="px-6 py-4"><span class="px-2 py-1 bg-amber-50 text-amber-600 rounded text-xs">进度风险</span></td>
+                                    <td class="px-6 py-4 text-indigo-600 hover:underline cursor-pointer" onclick="openRiskDetail('二期工程材料供应延误风险')">钢材供应可能延误，影响工程进度</td>
+                                    <td class="px-6 py-4">2026/01/18</td>
+                                    <td class="px-6 py-4">王采购</td>
+                                    <td class="px-6 py-4"><span class="px-2 py-1 bg-cyan-50 text-cyan-600 rounded text-xs">供应链中心</span></td>
+                                    <td class="px-6 py-4">-</td>
+                                    <td class="px-6 py-4"><span class="px-2 py-1 bg-yellow-50 text-yellow-600 rounded text-xs">未处置</span></td>
+                                    <td class="px-6 py-4"><span class="px-2 py-1 bg-red-50 text-red-600 rounded text-xs">超期</span></td>
+                                    <td class="px-6 py-4 text-right">
+                                        <button class="text-indigo-600 hover:underline mr-3" onclick="openRiskDetail('二期工程材料供应延误风险')">查看详情</button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="px-6 py-4">
+                                        <input type="checkbox" class="risk-checkbox rounded text-indigo-600 focus:ring-indigo-500" onchange="toggleBatchButtons()">
+                                    </td>
+                                    <td class="px-6 py-4 font-medium">机场T3航站楼消防设计风险</td>
+                                    <td class="px-6 py-4"><span class="px-2 py-1 bg-blue-50 text-blue-600 rounded text-xs">技术风险</span></td>
+                                    <td class="px-6 py-4 text-indigo-600 hover:underline cursor-pointer" onclick="openRiskDetail('机场T3航站楼消防设计风险')">消防设计可能不符合最新规范要求</td>
+                                    <td class="px-6 py-4">2026/01/22</td>
+                                    <td class="px-6 py-4">李设计</td>
+                                    <td class="px-6 py-4"><span class="px-2 py-1 bg-blue-50 text-blue-600 rounded text-xs">设计中心</span></td>
+                                    <td class="px-6 py-4">-</td>
+                                    <td class="px-6 py-4"><span class="px-2 py-1 bg-yellow-50 text-yellow-600 rounded text-xs">未处置</span></td>
+                                    <td class="px-6 py-4"><span class="px-2 py-1 bg-green-50 text-green-600 rounded text-xs">未超期</span></td>
+                                    <td class="px-6 py-4 text-right">
+                                        <button class="text-indigo-600 hover:underline mr-3" onclick="openRiskDetail('机场T3航站楼消防设计风险')">查看详情</button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="px-6 py-4">
+                                        <input type="checkbox" class="risk-checkbox rounded text-indigo-600 focus:ring-indigo-500" onchange="toggleBatchButtons()">
+                                    </td>
+                                    <td class="px-6 py-4 font-medium">二期工程成本超支风险</td>
+                                    <td class="px-6 py-4"><span class="px-2 py-1 bg-orange-50 text-orange-600 rounded text-xs">成本风险</span></td>
+                                    <td class="px-6 py-4 text-indigo-600 hover:underline cursor-pointer" onclick="openRiskDetail('二期工程成本超支风险')">工程成本可能超出预算10%以上</td>
+                                    <td class="px-6 py-4">2026/01/15</td>
+                                    <td class="px-6 py-4">张经理</td>
+                                    <td class="px-6 py-4"><span class="px-2 py-1 bg-orange-50 text-orange-600 rounded text-xs">商务中心</span></td>
+                                    <td class="px-6 py-4">2026/01/16</td>
+                                    <td class="px-6 py-4"><span class="px-2 py-1 bg-green-50 text-green-600 rounded text-xs">已处置</span></td>
+                                    <td class="px-6 py-4"><span class="px-2 py-1 bg-green-50 text-green-600 rounded text-xs">未超期</span></td>
+                                    <td class="px-6 py-4 text-right">
+                                        <button class="text-indigo-600 hover:underline mr-3" onclick="openRiskDetail('二期工程成本超支风险')">查看详情</button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="px-6 py-4">
+                                        <input type="checkbox" class="risk-checkbox rounded text-indigo-600 focus:ring-indigo-500" onchange="toggleBatchButtons()">
+                                    </td>
+                                    <td class="px-6 py-4 font-medium">机场T3航站楼机电安装质量风险</td>
+                                    <td class="px-6 py-4"><span class="px-2 py-1 bg-purple-50 text-purple-600 rounded text-xs">质量风险</span></td>
+                                    <td class="px-6 py-4 text-indigo-600 hover:underline cursor-pointer" onclick="openRiskDetail('机场T3航站楼机电安装质量风险')">机电安装可能存在质量问题，需要严格验收</td>
+                                    <td class="px-6 py-4">2026/01/17</td>
+                                    <td class="px-6 py-4">王总工</td>
+                                    <td class="px-6 py-4"><span class="px-2 py-1 bg-purple-50 text-purple-600 rounded text-xs">技术中心</span></td>
+                                    <td class="px-6 py-4">-</td>
+                                    <td class="px-6 py-4"><span class="px-2 py-1 bg-yellow-50 text-yellow-600 rounded text-xs">未处置</span></td>
+                                    <td class="px-6 py-4"><span class="px-2 py-1 bg-red-50 text-red-600 rounded text-xs">超期</span></td>
+                                    <td class="px-6 py-4 text-right">
+                                        <button class="text-indigo-600 hover:underline mr-3" onclick="openRiskDetail('机场T3航站楼机电安装质量风险')">查看详情</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 风险详情页面 -->
+            <div id="riskDetail" class="page-section max-w-[1600px] mx-auto space-y-6 hidden">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div class="p-6 border-b border-slate-100">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-2xl font-bold text-slate-800">风险详情</h2>
+                            <div class="flex gap-3">
+                                <button onclick="backToRiskList()" class="px-3 py-1.5 bg-slate-200 text-slate-700 text-xs rounded-md hover:bg-slate-300 flex items-center gap-1">
+                                    <i data-lucide="arrow-left" class="w-4 h-4"></i> 返回列表
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <!-- 风险信息 -->
+                        <div class="bg-slate-50 rounded-xl p-4 mb-6">
+                            <h4 class="font-medium text-slate-700 mb-3">风险基本信息</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-xs text-slate-400 mb-1">风险名称</label>
+                                    <div id="detailRiskName" class="text-sm font-medium text-slate-800 bg-slate-100 p-2 rounded-lg">机场T3航站楼结构安全风险</div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-400 mb-1">风险类型</label>
+                                    <div id="detailRiskType" class="text-sm font-medium text-slate-800 bg-slate-100 p-2 rounded-lg">安全风险</div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-400 mb-1">风险等级</label>
+                                    <div id="detailRiskLevel" class="text-sm font-medium text-slate-800 bg-slate-100 p-2 rounded-lg">高</div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-400 mb-1">风险描述</label>
+                                    <div id="detailRiskDescription" class="text-sm text-slate-800 bg-slate-100 p-2 rounded-lg">结构设计可能存在安全隐患，需要专业评估</div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-400 mb-1">发现时间</label>
+                                    <div id="detailFoundTime" class="text-sm text-slate-800 bg-slate-100 p-2 rounded-lg">2026/01/10</div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-400 mb-1">发现人</label>
+                                    <div id="detailFoundBy" class="text-sm text-slate-800 bg-slate-100 p-2 rounded-lg">张经理</div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-400 mb-1">处置截止时间</label>
+                                    <div id="detailDeadline" class="text-sm text-slate-800 bg-slate-100 p-2 rounded-lg">2026/01/20</div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-400 mb-1">处置人</label>
+                                    <div id="detailAssignee" class="text-sm text-slate-800 bg-slate-100 p-2 rounded-lg">王总工</div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-400 mb-1">支持中心</label>
+                                    <div id="detailSupportCenter" class="text-sm text-slate-800 bg-slate-100 p-2 rounded-lg">技术中心</div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-400 mb-1">处置时间</label>
+                                    <div id="detailHandleTime" class="text-sm text-slate-800 bg-slate-100 p-2 rounded-lg">-</div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-400 mb-1">处置结果</label>
+                                    <div id="detailHandleResult" class="text-sm text-slate-800 bg-slate-100 p-2 rounded-lg">未处置</div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-400 mb-1">超期状态</label>
+                                    <div id="detailOverdueStatus" class="text-sm text-slate-800 bg-slate-100 p-2 rounded-lg">未超期</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 处置记录 -->
+                        <div class="mb-6">
+                            <h4 class="font-medium text-slate-700 mb-3">处置记录</h4>
+                            <div class="bg-slate-50 rounded-xl p-4">
+                                <div class="space-y-4">
+                                    <div class="flex gap-3">
+                                        <div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
+                                            <i data-lucide="user" class="w-4 h-4 text-indigo-600"></i>
+                                        </div>
+                                        <div class="flex-1">
+                                            <div class="flex items-center gap-2 mb-1">
+                                                <span class="font-medium text-slate-800">系统</span>
+                                                <span class="text-xs text-slate-400">2026/01/10 09:00</span>
+                                            </div>
+                                            <p class="text-sm text-slate-600">风险创建，指派给王总工处置</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // 初始化Lucide图标
+        lucide.createIcons();
+
+        // 导航函数
+        function navigateTo(url) {
+            window.location.href = url;
+        }
+
+        // 切换组织菜单
+        function toggleOrgMenu() {
+            const orgMenu = document.getElementById('orgMenu');
+            orgMenu.classList.toggle('hidden');
+        }
+
+        // 切换中心视图
+        function switchCenterView(viewName, element) {
+            // 移除所有active类
+            document.querySelectorAll('.center-nav').forEach(item => {
+                item.classList.remove('active');
+            });
+            // 添加active类到当前元素
+            element.classList.add('active');
+            // 更新中心徽章
+            document.getElementById('centerBadge').textContent = viewName;
+        }
+
+        // 筛选状态
+        function filterByStatus(status) {
+            console.log('筛选状态:', status);
+            // 实际项目中这里会根据状态筛选表格数据
+        }
+
+        // 筛选优先级
+        function filterByPriority(priority) {
+            console.log('筛选优先级:', priority);
+            // 实际项目中这里会根据优先级筛选表格数据
+        }
+
+        // 排序功能
+        function sortBy(sortType) {
+            console.log('排序方式:', sortType);
+            // 实际项目中这里会根据排序类型对表格数据进行排序
+        }
+
+        // 全选/取消全选
+        function toggleSelectAll() {
+            const selectAll = document.getElementById('selectAll');
+            const checkboxes = document.querySelectorAll('.risk-checkbox');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = selectAll.checked;
+            });
+            toggleBatchButtons();
+        }
+
+        // 切换批量操作按钮状态
+        function toggleBatchButtons() {
+            const checkboxes = document.querySelectorAll('.risk-checkbox:checked');
+            const batchButtons = [
+                document.getElementById('batchAssignBtn'),
+                document.getElementById('batchExecuteBtn'),
+                document.getElementById('batchSuperviseBtn'),
+                document.getElementById('batchTransferBtn'),
+                document.getElementById('batchTerminateBtn')
+            ];
+            
+            const hasSelected = checkboxes.length > 0;
+            batchButtons.forEach(button => {
+                button.disabled = !hasSelected;
+                button.classList.toggle('opacity-50', !hasSelected);
+            });
+        }
+
+        // 打开风险详情
+        function openRiskDetail(riskName) {
+            console.log('查看风险详情:', riskName);
+            // 实际项目中这里会填充详情数据并显示详情页面
+            document.getElementById('riskManagement').classList.remove('active');
+            document.getElementById('riskDetail').classList.add('active');
+        }
+
+        // 返回风险列表
+        function backToRiskList() {
+            document.getElementById('riskDetail').classList.remove('active');
+            document.getElementById('riskManagement').classList.add('active');
+        }
+
+        // 批量操作函数
+        function batchAssign() {
+            console.log('批量指派');
+            // 实际项目中这里会执行批量指派操作
+        }
+
+        function batchExecute() {
+            console.log('批量执行');
+            // 实际项目中这里会执行批量执行操作
+        }
+
+        function batchSupervise() {
+            console.log('批量督办');
+            // 实际项目中这里会执行批量督办操作
+        }
+
+        function batchTransfer() {
+            console.log('批量转派');
+            // 实际项目中这里会执行批量转派操作
+        }
+
+        function batchTerminate() {
+            console.log('批量终止');
+            // 实际项目中这里会执行批量终止操作
+        }
+    </script>
+</body>
+</html>

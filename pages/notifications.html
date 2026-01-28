@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>通知中心 - 履约协同平台</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        indigo: { 50: '#eef2ff', 500: '#6366f1', 600: '#4f46e5' },
+                        slate: { 50: '#f8fafc', 100: '#f1f5f9', 200: '#e2e8f0', 300: '#cbd5e1', 800: '#1e293b' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #F4F7FE; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .page-section { display: none; animation: fadeIn 0.3s ease-in-out; }
+        .page-section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* 导航选中样式 */
+        .nav-item.active { background-color: #eef2ff; color: #4f46e5; border-right: 3px solid #4f46e5; }
+        .center-nav.active { background-color: #eef2ff; color: #4f46e5; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+
+        /* 抽屉动画 - 改为从右侧划出 */
+        .drawer { transform: translateX(100%); transition: transform 0.3s ease-in-out; }
+        .drawer.open { transform: translateX(0); }
+        
+        /* 慢速旋转动画 */
+        @keyframes spin-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .animate-spin-slow { animation: spin-slow 3s linear infinite; }
+        
+        /* 卡片悬停动画 */
+        .card-hover { transition: all 0.3s ease; }
+        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); }
+        
+        /* 按钮交互效果 */
+        .btn-primary { transition: all 0.3s ease; }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.3); }
+        
+        /* 平滑滚动 */
+        html { scroll-behavior: smooth; }
+        
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            .sidebar { width: 240px; }
+            .main-content { margin-left: 240px; }
+            .grid-cols-3 { grid-template-columns: 1fr; }
+            .grid-cols-2 { grid-template-columns: 1fr; }
+        }
+        
+        /* 加载动画 */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        
+        /* 进度条动画 */
+        @keyframes progress {
+            from { width: 0%; }
+            to { width: var(--progress-width, 100%); }
+        }
+        .progress-animate { animation: progress 1.5s ease-out forwards; }
+        
+        /* 标签动画 */
+        @keyframes slideIn {
+            from { transform: translateX(-100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .slide-in { animation: slideIn 0.5s ease-out forwards; }
+        
+        /* 微交互效果 */
+        .interactive { transition: all 0.2s ease; }
+        .interactive:hover { cursor: pointer; }
+        
+        /* 表格行悬停效果 */
+        table tbody tr:hover { background-color: #f8fafc; }
+        
+        /* 表单元素焦点效果 */
+        input:focus, select:focus, textarea:focus { outline: none; ring: 2px; ring-color: #6366f1; ring-opacity: 0.5; }
+    </style>
+</head>
+<body class="text-slate-600 h-screen flex overflow-hidden font-sans">
+
+    <aside class="w-64 bg-white border-r border-slate-100 flex flex-col flex-shrink-0 z-30 transition-all relative">
+        <div class="p-6 flex items-center gap-3 border-b border-slate-50 cursor-pointer" onclick="navigateTo('index.html')">
+            <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold shadow-md shadow-indigo-200">P</div>
+            <span class="text-lg font-bold text-slate-800">履约协同平台</span>
+        </div>
+        
+        <nav class="flex-1 px-4 mt-4 space-y-1 overflow-y-auto no-scrollbar" id="mainNav">
+            
+            <div class="mb-6 relative">
+                <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 mx-2 relative">
+                    <div class="text-[10px] text-slate-400 mb-1">当前层级</div>
+                    <div class="flex items-center justify-between cursor-pointer group" onclick="toggleOrgMenu()">
+                        <span id="currentOrg" class="text-sm font-bold text-slate-800 truncate">公司总包中心</span>
+                        <i data-lucide="chevrons-up-down" class="w-4 h-4 text-slate-400 group-hover:text-indigo-600"></i>
+                    </div>
+                    <div id="orgMenu" class="hidden absolute top-full left-2 right-2 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-50 py-2">
+                        <div onclick="changeOrg('公司总包中心')" class="text-xs p-2 hover:bg-slate-50 rounded cursor-pointer text-indigo-600 font-medium">公司总包中心</div>
+                        <div onclick="changeOrg('分公司总包中心')" class="text-xs p-2 hover:bg-slate-50 rounded cursor-pointer">分公司总包中心</div>
+                        <div onclick="changeOrg('成都项目部')" class="text-xs p-2 hover:bg-slate-50 rounded cursor-pointer">成都项目部</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-1 mb-6">
+                <div class="px-2 mb-2 text-xs font-bold text-slate-400 uppercase tracking-wider">功能模块</div>
+                
+                <button onclick="navigateTo('index.html')" id="nav-dashboard" class="nav-item w-full flex items-center gap-3 px-4 py-3 text-slate-500 rounded-xl font-medium transition-all hover:bg-slate-50">
+                    <i data-lucide="layout-dashboard" class="w-5 h-5"></i> 驾驶舱
+                </button>
+                
+                <button onclick="navigateTo('tasks.html')" id="nav-tasks" class="nav-item w-full flex items-center gap-3 px-4 py-3 text-slate-500 rounded-xl font-medium transition-all hover:bg-slate-50 relative">
+                    <i data-lucide="briefcase" class="w-5 h-5"></i> 任务大厅
+                    <span class="absolute top-1/2 right-4 transform -translate-y-1/2 px-2 py-1 bg-red-500 text-white text-xs rounded-full flex items-center justify-center shadow-md shadow-red-200 border border-red-100">99+</span>
+                </button>
+                
+                <button onclick="navigateTo('evaluation.html')" class="nav-item w-full flex items-center gap-3 px-4 py-3 text-slate-500 rounded-xl font-medium transition-all hover:bg-slate-50 relative">
+                    <i data-lucide="star" class="w-5 h-5"></i> 服务评价
+                    <span class="absolute top-1/2 right-4 transform -translate-y-1/2 px-2 py-1 bg-red-500 text-white text-xs rounded-full flex items-center justify-center shadow-md shadow-red-200 border border-red-100">20</span>
+                </button>
+                
+                <button onclick="navigateTo('performance.html')" class="nav-item w-full flex items-center gap-3 px-4 py-3 text-slate-500 rounded-xl font-medium transition-all hover:bg-slate-50 relative">
+                    <i data-lucide="trending-up" class="w-5 h-5"></i> 产值绩效
+                    <span class="absolute top-1/2 right-4 transform -translate-y-1/2 px-2 py-1 bg-red-500 text-white text-xs rounded-full flex items-center justify-center shadow-md shadow-red-200 border border-red-100">8</span>
+                </button>
+
+                <button onclick="navigateTo('knowledge.html')" class="nav-item w-full flex items-center gap-3 px-4 py-3 text-slate-500 rounded-xl font-medium transition-all hover:bg-slate-50">
+                    <i data-lucide="book-open" class="w-5 h-5"></i> 知识库
+                </button>
+
+                <button onclick="window.open('https://sjxk.cscec3b-iti.com/construction-management-platform-front/#/login?from=/business-registration', '_blank')" class="nav-item w-full flex items-center gap-3 px-4 py-3 text-slate-500 rounded-xl font-medium transition-all hover:bg-slate-50">
+                    <i data-lucide="users" class="w-5 h-5"></i> 工作协同管理
+                </button>
+
+                <button onclick="window.open('https://ucflowengine.cscec3b-iti.com', '_blank')" class="nav-item w-full flex items-center gap-3 px-4 py-3 text-slate-500 rounded-xl font-medium transition-all hover:bg-slate-50" style="display: none;">
+                    <i data-lucide="settings" class="w-5 h-5"></i> 工作流程管理
+                </button>
+            </div>
+
+            <div class="border-t border-slate-100 my-4"></div>
+            
+            <div class="mb-6 space-y-1">
+                <div class="px-2 mb-2 text-xs font-bold text-slate-400 uppercase tracking-wider">数据视图</div>
+                <button onclick="switchCenterView('总包中心视图', this)" class="center-nav active w-full flex items-center gap-3 px-3 py-2.5 text-slate-600 rounded-lg text-sm hover:bg-slate-50 transition-all">
+                    <span class="w-2 h-2 rounded-full bg-blue-500"></span> 总包中心视图
+                </button>
+                <button onclick="switchCenterView('设计中心视图', this)" class="center-nav w-full flex items-center gap-3 px-3 py-2.5 text-slate-600 rounded-lg text-sm hover:bg-slate-50 transition-all">
+                    <span class="w-2 h-2 rounded-full bg-purple-500"></span> 设计中心视图
+                </button>
+                <button onclick="switchCenterView('技术中心视图', this)" class="center-nav w-full flex items-center gap-3 px-3 py-2.5 text-slate-600 rounded-lg text-sm hover:bg-slate-50 transition-all">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span> 技术中心视图
+                </button>
+                <button onclick="switchCenterView('商务中心视图', this)" class="center-nav w-full flex items-center gap-3 px-3 py-2.5 text-slate-600 rounded-lg text-sm hover:bg-slate-50 transition-all">
+                    <span class="w-2 h-2 rounded-full bg-orange-500"></span> 商务中心视图
+                </button>
+                <button onclick="switchCenterView('供应链中心视图', this)" class="center-nav w-full flex items-center gap-3 px-3 py-2.5 text-slate-600 rounded-lg text-sm hover:bg-slate-50 transition-all">
+                    <span class="w-2 h-2 rounded-full bg-cyan-500"></span> 供应链中心视图
+                </button>
+                <button onclick="switchCenterView('项目视图', this)" class="center-nav w-full flex items-center gap-3 px-3 py-2.5 text-slate-600 rounded-lg text-sm hover:bg-slate-50 transition-all">
+                    <span class="w-2 h-2 rounded-full bg-pink-500"></span> 项目视图
+                </button>
+                <button onclick="switchCenterView('人员视图', this)" class="center-nav w-full flex items-center gap-3 px-3 py-2.5 text-slate-600 rounded-lg text-sm hover:bg-slate-50 transition-all">
+                    <span class="w-2 h-2 rounded-full bg-amber-500"></span> 人员视图
+                </button>
+            </div>
+
+            <div class="border-t border-slate-100 my-4"></div>
+
+        </nav>
+
+        <div class="p-4 border-t border-slate-100">
+            <div onclick="navigateTo('profile.html')" class="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors group">
+                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" class="w-10 h-10 rounded-full bg-indigo-50 border-2 border-transparent group-hover:border-indigo-200" alt="User">
+                <div class="overflow-hidden">
+                    <div class="text-sm font-bold text-slate-800">张经理</div>
+                    <div class="text-xs text-slate-400 truncate">个人中心 &gt;</div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col min-w-0 overflow-hidden relative bg-[#F4F7FE]">
+        
+        <header class="bg-white/80 backdrop-blur-md sticky top-0 z-20 px-8 py-4 flex justify-between items-center border-b border-slate-100 shadow-sm">
+            <div>
+                <div class="flex items-center gap-2">
+                    <h1 id="pageTitle" class="text-2xl font-bold text-slate-800">通知中心</h1>
+                    <span id="centerBadge" class="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full font-bold">公司总包中心</span>
+                </div>
+                <p class="text-slate-400 text-sm mt-1">数据更新时间: 2026/01/15 09:30</p>
+            </div>
+            <div class="flex items-center gap-4">
+                
+
+                <div class="h-6 w-px bg-slate-200 mx-2"></div>
+
+                <div class="relative">
+                    <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4"></i>
+                    <input type="text" placeholder="搜索..." class="pl-10 pr-4 py-2 bg-slate-100 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100 w-48 border-transparent transition-all focus:w-64">
+                </div>
+                <button onclick="navigateTo('notifications.html')" class="relative p-2 bg-white rounded-full hover:bg-slate-50 border border-slate-100 shadow-sm">
+                    <i data-lucide="bell" class="w-5 h-5 text-slate-600"></i>
+                    <span class="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full"></span>
+                </button>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-6 relative scroll-smooth" id="scrollContainer">
+            
+            <div id="notifications" class="page-section active max-w-[1600px] mx-auto space-y-6 pb-20">
+                <div class="flex flex-wrap gap-4 items-center justify-between">
+                    <h2 class="text-2xl font-bold text-slate-800">待办通知中心</h2>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+                    <div class="mb-6">
+                        <!-- 搜索框区域 -->
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="relative flex-1 max-w-2xl">
+                                <input type="text" placeholder="请输入待办名称、编号名称、执行人员名称查询" class="w-full px-4 py-2 border border-slate-200 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                                <button class="absolute right-0 top-0 h-full px-3 bg-blue-600 text-white rounded-r-lg hover:bg-blue-700 flex items-center justify-center">
+                                    <i data-lucide="search" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                            <button onclick="toggleAdvancedFilter()" class="text-blue-600 hover:text-blue-700 text-sm flex items-center gap-1">
+                                <i data-lucide="filter" class="w-4 h-4"></i> 高级筛选
+                            </button>
+                            <button class="text-slate-400 hover:text-slate-600 text-sm">重置查询条件</button>
+                        </div>
+
+                        <!-- 高级筛选区域 - 默认收起 -->
+                        <div id="advancedFilter" class="hidden">
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                                <div>
+                                    <label class="block text-xs text-slate-400 mb-1">任务标签</label>
+                                    <select class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                                        <option>全部</option>
+                                        <option>督办</option>
+                                        <option>已超期</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-400 mb-1">任务定义</label>
+                                    <input type="text" placeholder="请输入" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-400 mb-1">事件名称</label>
+                                    <input type="text" placeholder="请输入" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-400 mb-1">功能名称</label>
+                                    <input type="text" placeholder="请输入" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                                <div>
+                                    <label class="block text-xs text-slate-400 mb-1">计划截止时间</label>
+                                    <div class="flex items-center gap-2">
+                                        <input type="text" placeholder="开始日期" class="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                                        <span class="text-slate-400">-</span>
+                                        <input type="text" placeholder="结束日期" class="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-400 mb-1">计划开始时间</label>
+                                    <div class="flex items-center gap-2">
+                                        <input type="text" placeholder="开始日期" class="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                                        <span class="text-slate-400">-</span>
+                                        <input type="text" placeholder="结束日期" class="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                        <p class="text-sm text-orange-700">当前系统已监测到，企业要求开展的功能中，您有0项待编排，14项已停用，<a href="#" class="text-blue-600 hover:underline">前去查看</a></p>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="bg-slate-50 border-b border-slate-200">
+                                    <th class="px-4 py-3 text-left font-medium text-slate-700">待办名称</th>
+                                    <th class="px-4 py-3 text-left font-medium text-slate-700">组织名称</th>
+                                    <th class="px-4 py-3 text-left font-medium text-slate-700">任务定义</th>
+                                    <th class="px-4 py-3 text-left font-medium text-slate-700">任务剩余</th>
+                                    <th class="px-4 py-3 text-left font-medium text-slate-700">开始时间</th>
+                                    <th class="px-4 py-3 text-left font-medium text-slate-700">任务状态</th>
+                                    <th class="px-4 py-3 text-left font-medium text-slate-700 hidden">事件名称</th>
+                                    <th class="px-4 py-3 text-left font-medium text-slate-700 hidden">功能名称</th>
+                                    <th class="px-4 py-3 text-left font-medium text-slate-700">结束时间</th>
+                                    <th class="px-4 py-3 text-left font-medium text-slate-700">待办编号</th>
+                                    <th class="px-4 py-3 text-left font-medium text-slate-700">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="border-b border-slate-100 hover:bg-slate-50">
+                                    <td class="px-4 py-3">机场T3航站楼图纸深化任务</td>
+                                    <td class="px-4 py-3">设计中心</td>
+                                    <td class="px-4 py-3">图纸深化与审核</td>
+                                    <td class="px-4 py-3">2天 12时 30分</td>
+                                    <td class="px-4 py-3">2026/01/10 09:00:00</td>
+                                    <td class="px-4 py-3"><span class="px-2 py-1 bg-yellow-50 text-yellow-600 rounded text-xs">进行中</span></td>
+                                    <td class="px-4 py-3 hidden">周期事件</td>
+                                    <td class="px-4 py-3 hidden">图纸审核</td>
+                                    <td class="px-4 py-3">2026/01/25 17:00:00</td>
+                                    <td class="px-4 py-3">DES-20260110-001</td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex gap-2">
+                                            <button class="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700">执行</button>
+                                            <button class="px-2 py-1 bg-slate-200 text-slate-700 rounded text-xs hover:bg-slate-300">更多</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr class="border-b border-slate-100 hover:bg-slate-50">
+                                    <td class="px-4 py-3">钢材采购合同审批任务</td>
+                                    <td class="px-4 py-3">供应链中心</td>
+                                    <td class="px-4 py-3">合同审批与管理</td>
+                                    <td class="px-4 py-3">1天 05时 15分</td>
+                                    <td class="px-4 py-3">2026/01/15 10:30:00</td>
+                                    <td class="px-4 py-3"><span class="px-2 py-1 bg-yellow-50 text-yellow-600 rounded text-xs">待处理</span></td>
+                                    <td class="px-4 py-3 hidden">单次事件</td>
+                                    <td class="px-4 py-3 hidden">合同审批</td>
+                                    <td class="px-4 py-3">2026/01/20 17:00:00</td>
+                                    <td class="px-4 py-3">SCM-20260115-002</td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex gap-2">
+                                            <button class="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700">执行</button>
+                                            <button class="px-2 py-1 bg-slate-200 text-slate-700 rounded text-xs hover:bg-slate-300">更多</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr class="border-b border-slate-100 hover:bg-slate-50">
+                                    <td class="px-4 py-3">商务标编制任务</td>
+                                    <td class="px-4 py-3">商务中心</td>
+                                    <td class="px-4 py-3">投标文件编制</td>
+                                    <td class="px-4 py-3">3天 08时 45分</td>
+                                    <td class="px-4 py-3">2026/01/12 14:00:00</td>
+                                    <td class="px-4 py-3"><span class="px-2 py-1 bg-yellow-50 text-yellow-600 rounded text-xs">进行中</span></td>
+                                    <td class="px-4 py-3 hidden">单次事件</td>
+                                    <td class="px-4 py-3 hidden">投标编制</td>
+                                    <td class="px-4 py-3">2026/01/28 17:00:00</td>
+                                    <td class="px-4 py-3">BUS-20260112-003</td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex gap-2">
+                                            <button class="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700">执行</button>
+                                            <button class="px-2 py-1 bg-slate-200 text-slate-700 rounded text-xs hover:bg-slate-300">更多</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr class="hover:bg-slate-50">
+                                    <td class="px-4 py-3">技术方案评审任务</td>
+                                    <td class="px-4 py-3">技术中心</td>
+                                    <td class="px-4 py-3">技术方案评审</td>
+                                    <td class="px-4 py-3">0天 12时 30分</td>
+                                    <td class="px-4 py-3">2026/01/18 09:00:00</td>
+                                    <td class="px-4 py-3"><span class="px-2 py-1 bg-red-50 text-red-600 rounded text-xs">已超期</span></td>
+                                    <td class="px-4 py-3 hidden">单次事件</td>
+                                    <td class="px-4 py-3 hidden">技术评审</td>
+                                    <td class="px-4 py-3">2026/01/19 17:00:00</td>
+                                    <td class="px-4 py-3">TECH-20260118-004</td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex gap-2">
+                                            <button class="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700">执行</button>
+                                            <button class="px-2 py-1 bg-slate-200 text-slate-700 rounded text-xs hover:bg-slate-300">更多</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="flex items-center justify-between mt-6">
+                        <div class="text-sm text-slate-500">共 20 条记录</div>
+                        <div class="flex items-center gap-2">
+                            <button class="px-3 py-1 border border-slate-200 rounded text-sm text-slate-600 hover:bg-slate-50 disabled:opacity-50" disabled>上一页</button>
+                            <button class="px-3 py-1 bg-blue-600 text-white rounded text-sm">1</button>
+                            <button class="px-3 py-1 border border-slate-200 rounded text-sm text-slate-600 hover:bg-slate-50">2</button>
+                            <button class="px-3 py-1 border border-slate-200 rounded text-sm text-slate-600 hover:bg-slate-50">3</button>
+                            <button class="px-3 py-1 border border-slate-200 rounded text-sm text-slate-600 hover:bg-slate-50">下一页</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // 初始化 Lucide 图标
+        lucide.createIcons();
+
+        // 导航函数
+        function navigateTo(page) {
+            window.location.href = page;
+        }
+
+        // 组织菜单切换
+        function toggleOrgMenu() {
+            const menu = document.getElementById('orgMenu');
+            menu.classList.toggle('hidden');
+        }
+
+        // 切换组织
+        function changeOrg(orgName) {
+            document.getElementById('currentOrg').textContent = orgName;
+            document.getElementById('orgMenu').classList.add('hidden');
+            document.getElementById('centerBadge').textContent = orgName;
+        }
+
+        // 切换中心视图
+        function switchCenterView(centerName, element) {
+            // 移除所有活动状态
+            document.querySelectorAll('.center-nav').forEach(item => {
+                item.classList.remove('active');
+            });
+            // 添加当前活动状态
+            if (element) {
+                element.classList.add('active');
+            }
+            document.getElementById('centerBadge').textContent = centerName;
+        }
+
+        // 切换高级筛选
+        function toggleAdvancedFilter() {
+            const advancedFilter = document.getElementById('advancedFilter');
+            advancedFilter.classList.toggle('hidden');
+        }
+    </script>
+</body>
+</html>

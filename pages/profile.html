@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人中心 - 履约协同平台</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        indigo: { 50: '#eef2ff', 500: '#6366f1', 600: '#4f46e5' },
+                        slate: { 50: '#f8fafc', 100: '#f1f5f9', 200: '#e2e8f0', 300: '#cbd5e1', 800: '#1e293b' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #F4F7FE; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .page-section { display: none; animation: fadeIn 0.3s ease-in-out; }
+        .page-section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* 导航选中样式 */
+        .nav-item.active { background-color: #eef2ff; color: #4f46e5; border-right: 3px solid #4f46e5; }
+        .center-nav.active { background-color: #eef2ff; color: #4f46e5; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+
+        /* 抽屉动画 - 改为从右侧划出 */
+        .drawer { transform: translateX(100%); transition: transform 0.3s ease-in-out; }
+        .drawer.open { transform: translateX(0); }
+        
+        /* 慢速旋转动画 */
+        @keyframes spin-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .animate-spin-slow { animation: spin-slow 3s linear infinite; }
+        
+        /* 卡片悬停动画 */
+        .card-hover { transition: all 0.3s ease; }
+        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); }
+        
+        /* 按钮交互效果 */
+        .btn-primary { transition: all 0.3s ease; }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.3); }
+        
+        /* 平滑滚动 */
+        html { scroll-behavior: smooth; }
+        
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            .sidebar { width: 240px; }
+            .main-content { margin-left: 240px; }
+            .grid-cols-3 { grid-template-columns: 1fr; }
+            .grid-cols-2 { grid-template-columns: 1fr; }
+        }
+        
+        /* 加载动画 */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        
+        /* 进度条动画 */
+        @keyframes progress {
+            from { width: 0%; }
+            to { width: var(--progress-width, 100%); }
+        }
+        .progress-animate { animation: progress 1.5s ease-out forwards; }
+        
+        /* 标签动画 */
+        @keyframes slideIn {
+            from { transform: translateX(-100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .slide-in { animation: slideIn 0.5s ease-out forwards; }
+        
+        /* 微交互效果 */
+        .interactive { transition: all 0.2s ease; }
+        .interactive:hover { cursor: pointer; }
+        
+        /* 表格行悬停效果 */
+        table tbody tr:hover { background-color: #f8fafc; }
+        
+        /* 表单元素焦点效果 */
+        input:focus, select:focus, textarea:focus { outline: none; ring: 2px; ring-color: #6366f1; ring-opacity: 0.5; }
+    </style>
+</head>
+<body class="text-slate-600 h-screen flex overflow-hidden font-sans">
+
+    <aside class="w-64 bg-white border-r border-slate-100 flex flex-col flex-shrink-0 z-30 transition-all relative">
+        <div class="p-6 flex items-center gap-3 border-b border-slate-50 cursor-pointer" onclick="navigateTo('index.html')">
+            <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold shadow-md shadow-indigo-200">P</div>
+            <span class="text-lg font-bold text-slate-800">履约协同平台</span>
+        </div>
+        
+        <nav class="flex-1 px-4 mt-4 space-y-1 overflow-y-auto no-scrollbar" id="mainNav">
+            
+            <div class="mb-6 relative">
+                <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 mx-2 relative">
+                    <div class="text-[10px] text-slate-400 mb-1">当前层级</div>
+                    <div class="flex items-center justify-between cursor-pointer group" onclick="toggleOrgMenu()">
+                        <span id="currentOrg" class="text-sm font-bold text-slate-800 truncate">公司总包中心</span>
+                        <i data-lucide="chevrons-up-down" class="w-4 h-4 text-slate-400 group-hover:text-indigo-600"></i>
+                    </div>
+                    <div id="orgMenu" class="hidden absolute top-full left-2 right-2 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-50 py-2">
+                        <div onclick="changeOrg('公司总包中心')" class="text-xs p-2 hover:bg-slate-50 rounded cursor-pointer text-indigo-600 font-medium">公司总包中心</div>
+                        <div onclick="changeOrg('分公司总包中心')" class="text-xs p-2 hover:bg-slate-50 rounded cursor-pointer">分公司总包中心</div>
+                        <div onclick="changeOrg('成都项目部')" class="text-xs p-2 hover:bg-slate-50 rounded cursor-pointer">成都项目部</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-1 mb-6">
+                <div class="px-2 mb-2 text-xs font-bold text-slate-400 uppercase tracking-wider">功能模块</div>
+                
+                <button onclick="navigateTo('index.html')" id="nav-dashboard" class="nav-item w-full flex items-center gap-3 px-4 py-3 text-slate-500 rounded-xl font-medium transition-all hover:bg-slate-50">
+                    <i data-lucide="layout-dashboard" class="w-5 h-5"></i> 驾驶舱
+                </button>
+                
+                <button onclick="navigateTo('tasks.html')" id="nav-tasks" class="nav-item w-full flex items-center gap-3 px-4 py-3 text-slate-500 rounded-xl font-medium transition-all hover:bg-slate-50 relative">
+                    <i data-lucide="briefcase" class="w-5 h-5"></i> 任务大厅
+                    <span class="absolute top-1/2 right-4 transform -translate-y-1/2 px-2 py-1 bg-red-500 text-white text-xs rounded-full flex items-center justify-center shadow-md shadow-red-200 border border-red-100">99+</span>
+                </button>
+                
+                <button onclick="navigateTo('evaluation.html')" class="nav-item w-full flex items-center gap-3 px-4 py-3 text-slate-500 rounded-xl font-medium transition-all hover:bg-slate-50 relative">
+                    <i data-lucide="star" class="w-5 h-5"></i> 服务评价
+                    <span class="absolute top-1/2 right-4 transform -translate-y-1/2 px-2 py-1 bg-red-500 text-white text-xs rounded-full flex items-center justify-center shadow-md shadow-red-200 border border-red-100">20</span>
+                </button>
+                
+                <button onclick="navigateTo('performance.html')" class="nav-item w-full flex items-center gap-3 px-4 py-3 text-slate-500 rounded-xl font-medium transition-all hover:bg-slate-50 relative">
+                    <i data-lucide="trending-up" class="w-5 h-5"></i> 产值绩效
+                    <span class="absolute top-1/2 right-4 transform -translate-y-1/2 px-2 py-1 bg-red-500 text-white text-xs rounded-full flex items-center justify-center shadow-md shadow-red-200 border border-red-100">8</span>
+                </button>
+
+                <button onclick="navigateTo('knowledge.html')" class="nav-item w-full flex items-center gap-3 px-4 py-3 text-slate-500 rounded-xl font-medium transition-all hover:bg-slate-50">
+                    <i data-lucide="book-open" class="w-5 h-5"></i> 知识库
+                </button>
+
+                <button onclick="window.open('https://sjxk.cscec3b-iti.com/construction-management-platform-front/#/login?from=/business-registration', '_blank')" class="nav-item w-full flex items-center gap-3 px-4 py-3 text-slate-500 rounded-xl font-medium transition-all hover:bg-slate-50">
+                    <i data-lucide="users" class="w-5 h-5"></i> 工作协同管理
+                </button>
+
+                <button onclick="window.open('https://ucflowengine.cscec3b-iti.com', '_blank')" class="nav-item w-full flex items-center gap-3 px-4 py-3 text-slate-500 rounded-xl font-medium transition-all hover:bg-slate-50" style="display: none;">
+                    <i data-lucide="settings" class="w-5 h-5"></i> 工作流程管理
+                </button>
+            </div>
+
+            <div class="border-t border-slate-100 my-4"></div>
+            
+            <div class="mb-6 space-y-1">
+                <div class="px-2 mb-2 text-xs font-bold text-slate-400 uppercase tracking-wider">数据视图</div>
+                <button onclick="switchCenterView('总包中心视图', this)" class="center-nav active w-full flex items-center gap-3 px-3 py-2.5 text-slate-600 rounded-lg text-sm hover:bg-slate-50 transition-all">
+                    <span class="w-2 h-2 rounded-full bg-blue-500"></span> 总包中心视图
+                </button>
+                <button onclick="switchCenterView('设计中心视图', this)" class="center-nav w-full flex items-center gap-3 px-3 py-2.5 text-slate-600 rounded-lg text-sm hover:bg-slate-50 transition-all">
+                    <span class="w-2 h-2 rounded-full bg-purple-500"></span> 设计中心视图
+                </button>
+                <button onclick="switchCenterView('技术中心视图', this)" class="center-nav w-full flex items-center gap-3 px-3 py-2.5 text-slate-600 rounded-lg text-sm hover:bg-slate-50 transition-all">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span> 技术中心视图
+                </button>
+                <button onclick="switchCenterView('商务中心视图', this)" class="center-nav w-full flex items-center gap-3 px-3 py-2.5 text-slate-600 rounded-lg text-sm hover:bg-slate-50 transition-all">
+                    <span class="w-2 h-2 rounded-full bg-orange-500"></span> 商务中心视图
+                </button>
+                <button onclick="switchCenterView('供应链中心视图', this)" class="center-nav w-full flex items-center gap-3 px-3 py-2.5 text-slate-600 rounded-lg text-sm hover:bg-slate-50 transition-all">
+                    <span class="w-2 h-2 rounded-full bg-cyan-500"></span> 供应链中心视图
+                </button>
+                <button onclick="switchCenterView('项目视图', this)" class="center-nav w-full flex items-center gap-3 px-3 py-2.5 text-slate-600 rounded-lg text-sm hover:bg-slate-50 transition-all">
+                    <span class="w-2 h-2 rounded-full bg-pink-500"></span> 项目视图
+                </button>
+                <button onclick="switchCenterView('人员视图', this)" class="center-nav w-full flex items-center gap-3 px-3 py-2.5 text-slate-600 rounded-lg text-sm hover:bg-slate-50 transition-all">
+                    <span class="w-2 h-2 rounded-full bg-amber-500"></span> 人员视图
+                </button>
+            </div>
+
+            <div class="border-t border-slate-100 my-4"></div>
+
+        </nav>
+
+        <div class="p-4 border-t border-slate-100">
+            <div onclick="navigateTo('profile.html')" class="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors group">
+                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" class="w-10 h-10 rounded-full bg-indigo-50 border-2 border-transparent group-hover:border-indigo-200" alt="User">
+                <div class="overflow-hidden">
+                    <div class="text-sm font-bold text-slate-800">张经理</div>
+                    <div class="text-xs text-slate-400 truncate">个人中心 &gt;</div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col min-w-0 overflow-hidden relative bg-[#F4F7FE]">
+        
+        <header class="bg-white/80 backdrop-blur-md sticky top-0 z-20 px-8 py-4 flex justify-between items-center border-b border-slate-100 shadow-sm">
+            <div>
+                <div class="flex items-center gap-2">
+                    <h1 id="pageTitle" class="text-2xl font-bold text-slate-800">个人中心</h1>
+                    <span id="centerBadge" class="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full font-bold">公司总包中心</span>
+                </div>
+                <p class="text-slate-400 text-sm mt-1">数据更新时间: 2026/01/15 09:30</p>
+            </div>
+            <div class="flex items-center gap-4">
+                <!-- <button class="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors shadow-lg shadow-indigo-200 btn-primary">
+                            <i data-lucide="plus" class="w-4 h-4"></i> 新增任务
+                        </button> -->
+
+                <div class="h-6 w-px bg-slate-200 mx-2"></div>
+
+                <div class="relative">
+                    <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4"></i>
+                    <input type="text" placeholder="搜索..." class="pl-10 pr-4 py-2 bg-slate-100 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100 w-48 border-transparent transition-all focus:w-64">
+                </div>
+                <button onclick="navigateTo('notifications.html')" class="relative p-2 bg-white rounded-full hover:bg-slate-50 border border-slate-100 shadow-sm">
+                    <i data-lucide="bell" class="w-5 h-5 text-slate-600"></i>
+                    <span class="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full"></span>
+                </button>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-6 relative scroll-smooth" id="scrollContainer">
+            
+            <div id="profile" class="page-section active max-w-[1600px] mx-auto space-y-6 pb-20">
+                <div class="bg-white rounded-2xl p-8 shadow-sm border border-slate-100">
+                    <div class="flex flex-col md:flex-row gap-8 items-center">
+                        <div class="text-center md:text-left">
+                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" class="w-24 h-24 rounded-full bg-indigo-50 border-4 border-indigo-100 mx-auto md:mx-0 shadow-md" alt="User">
+                            <h2 class="text-2xl font-bold text-slate-800 mt-4">张经理</h2>
+                            <p class="text-slate-500 mt-1">公司总包中心 - 项目经理</p>
+                            <div class="mt-4 flex gap-3 justify-center md:justify-start">
+                                <button class="px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 flex items-center gap-2 shadow-sm shadow-indigo-100">
+                                    <i data-lucide="edit" class="w-4 h-4"></i> 编辑资料
+                                </button>
+                                <button class="px-4 py-2 bg-white border border-slate-200 text-slate-600 text-sm rounded-lg hover:bg-slate-50 flex items-center gap-2 shadow-sm">
+                                    <i data-lucide="settings" class="w-4 h-4"></i> 账号设置
+                                </button>
+                            </div>
+                        </div>
+                        <div class="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
+                            <div class="bg-slate-50 rounded-xl p-4 text-center">
+                                <div class="text-2xl font-bold text-slate-800">128</div>
+                                <div class="text-sm text-slate-500">完成任务</div>
+                            </div>
+                            <div class="bg-slate-50 rounded-xl p-4 text-center">
+                                <div class="text-2xl font-bold text-slate-800">4.9</div>
+                                <div class="text-sm text-slate-500">平均评分</div>
+                            </div>
+                            <div class="bg-slate-50 rounded-xl p-4 text-center">
+                                <div class="text-2xl font-bold text-slate-800">85%</div>
+                                <div class="text-sm text-slate-500">准时率</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-2 space-y-6">
+                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+                            <h3 class="font-bold text-lg text-slate-800 mb-4">近期任务</h3>
+                            <div class="space-y-4">
+                                <div class="p-4 border border-slate-100 rounded-xl hover:shadow-md transition-shadow">
+                                    <div class="flex justify-between items-start mb-2">
+                                        <h4 class="font-bold text-slate-800">机场T3航站楼图纸深化任务</h4>
+                                        <span class="px-2 py-1 bg-orange-50 text-orange-600 text-xs rounded">进行中</span>
+                                    </div>
+                                    <div class="text-xs text-slate-400 mb-3">任务ID: 202601130001</div>
+                                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm text-slate-500 mb-3">
+                                        <div class="flex items-center gap-1">
+                                            <i data-lucide="building" class="w-3 h-3"></i>
+                                            <span>设计中心</span>
+                                        </div>
+                                        <div class="flex items-center gap-1">
+                                            <i data-lucide="calendar" class="w-3 h-3"></i>
+                                            <span>2026/01/20</span>
+                                        </div>
+                                        <div class="flex items-center gap-1">
+                                            <i data-lucide="clock" class="w-3 h-3"></i>
+                                            <span>7天</span>
+                                        </div>
+                                        <div class="flex items-center gap-1">
+                                            <i data-lucide="trending-up" class="w-3 h-3"></i>
+                                            <span>65%</span>
+                                        </div>
+                                    </div>
+                                    <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                                        <div class="bg-indigo-500 h-2 rounded-full" style="width: 65%"></div>
+                                    </div>
+                                </div>
+
+                                <div class="p-4 border border-slate-100 rounded-xl hover:shadow-md transition-shadow">
+                                    <div class="flex justify-between items-start mb-2">
+                                        <h4 class="font-bold text-slate-800">超高层建筑核心筒爬模施工方案</h4>
+                                        <span class="px-2 py-1 bg-emerald-50 text-emerald-600 text-xs rounded">已完成</span>
+                                    </div>
+                                    <div class="text-xs text-slate-400 mb-3">任务ID: 202601100002</div>
+                                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm text-slate-500 mb-3">
+                                        <div class="flex items-center gap-1">
+                                            <i data-lucide="building" class="w-3 h-3"></i>
+                                            <span>技术中心</span>
+                                        </div>
+                                        <div class="flex items-center gap-1">
+                                            <i data-lucide="calendar" class="w-3 h-3"></i>
+                                            <span>2026/01/15</span>
+                                        </div>
+                                        <div class="flex items-center gap-1">
+                                            <i data-lucide="clock" class="w-3 h-3"></i>
+                                            <span>5天</span>
+                                        </div>
+                                        <div class="flex items-center gap-1">
+                                            <i data-lucide="trending-up" class="w-3 h-3"></i>
+                                            <span>100%</span>
+                                        </div>
+                                    </div>
+                                    <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                                        <div class="bg-emerald-500 h-2 rounded-full" style="width: 100%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-4 text-center">
+                                <button onclick="navigateTo('tasks.html')" class="text-sm font-medium text-indigo-600 hover:underline">查看全部任务</button>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+                            <h3 class="font-bold text-lg text-slate-800 mb-4">工作统计</h3>
+                            <div class="h-[300px]">
+                                <canvas id="workChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-6">
+                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+                            <h3 class="font-bold text-lg text-slate-800 mb-4">个人信息</h3>
+                            <div class="space-y-4">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-slate-500">姓名</span>
+                                    <span class="font-medium text-slate-800">张经理</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-slate-500">职位</span>
+                                    <span class="font-medium text-slate-800">项目经理</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-slate-500">所属部门</span>
+                                    <span class="font-medium text-slate-800">公司总包中心</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-slate-500">联系电话</span>
+                                    <span class="font-medium text-slate-800">138****1234</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-slate-500">电子邮箱</span>
+                                    <span class="font-medium text-slate-800">zhang@example.com</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-slate-500">入职时间</span>
+                                    <span class="font-medium text-slate-800">2023/01/15</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+                            <h3 class="font-bold text-lg text-slate-800 mb-4">技能标签</h3>
+                            <div class="flex flex-wrap gap-2">
+                                <span class="px-3 py-1 bg-indigo-50 text-indigo-600 text-xs rounded-full">项目管理</span>
+                                <span class="px-3 py-1 bg-blue-50 text-blue-600 text-xs rounded-full">技术方案</span>
+                                <span class="px-3 py-1 bg-purple-50 text-purple-600 text-xs rounded-full">商务谈判</span>
+                                <span class="px-3 py-1 bg-emerald-50 text-emerald-600 text-xs rounded-full">团队协作</span>
+                                <span class="px-3 py-1 bg-amber-50 text-amber-600 text-xs rounded-full">风险管理</span>
+                                <span class="px-3 py-1 bg-slate-50 text-slate-600 text-xs rounded-full">成本控制</span>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+                            <h3 class="font-bold text-lg text-slate-800 mb-4">快捷操作</h3>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="p-4 border border-slate-100 rounded-lg hover:shadow-md transition-shadow cursor-pointer flex flex-col items-center gap-2" onclick="navigateTo('tasks.html')">
+                                    <div class="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
+                                        <i data-lucide="briefcase" class="w-5 h-5"></i>
+                                    </div>
+                                    <span class="text-sm font-medium text-slate-800">我的任务</span>
+                                </div>
+                                <div class="p-4 border border-slate-100 rounded-lg hover:shadow-md transition-shadow cursor-pointer flex flex-col items-center gap-2" onclick="navigateTo('evaluation.html')">
+                                    <div class="p-2 bg-yellow-50 text-yellow-600 rounded-lg">
+                                        <i data-lucide="star" class="w-5 h-5"></i>
+                                    </div>
+                                    <span class="text-sm font-medium text-slate-800">我的评价</span>
+                                </div>
+                                <div class="p-4 border border-slate-100 rounded-lg hover:shadow-md transition-shadow cursor-pointer flex flex-col items-center gap-2" onclick="navigateTo('performance.html')">
+                                    <div class="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
+                                        <i data-lucide="trending-up" class="w-5 h-5"></i>
+                                    </div>
+                                    <span class="text-sm font-medium text-slate-800">绩效统计</span>
+                                </div>
+                                <div class="p-4 border border-slate-100 rounded-lg hover:shadow-md transition-shadow cursor-pointer flex flex-col items-center gap-2" onclick="navigateTo('knowledge.html')">
+                                    <div class="p-2 bg-purple-50 text-purple-600 rounded-lg">
+                                        <i data-lucide="book-open" class="w-5 h-5"></i>
+                                    </div>
+                                    <span class="text-sm font-medium text-slate-800">我的知识库</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // 初始化 Lucide 图标
+        lucide.createIcons();
+
+        // 导航函数
+        function navigateTo(page) {
+            window.location.href = page;
+        }
+
+        // 组织菜单切换
+        function toggleOrgMenu() {
+            const menu = document.getElementById('orgMenu');
+            menu.classList.toggle('hidden');
+        }
+
+        // 切换组织
+        function changeOrg(orgName) {
+            document.getElementById('currentOrg').textContent = orgName;
+            document.getElementById('orgMenu').classList.add('hidden');
+            document.getElementById('centerBadge').textContent = orgName;
+        }
+
+        // 切换中心视图
+        function switchCenterView(centerName, element) {
+            // 移除所有活动状态
+            document.querySelectorAll('.center-nav').forEach(item => {
+                item.classList.remove('active');
+            });
+            // 添加当前活动状态
+            if (element) {
+                element.classList.add('active');
+            }
+            document.getElementById('centerBadge').textContent = centerName;
+        }
+
+        // 初始化工作统计图表
+        window.onload = function() {
+            const ctx = document.getElementById('workChart');
+            if (ctx) {
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: ['1月', '2月', '3月', '4月', '5月', '6月'],
+                        datasets: [{
+                            label: '完成任务数',
+                            data: [12, 19, 15, 22, 18, 25],
+                            borderColor: '#4f46e5',
+                            backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        }, {
+                            label: '产值贡献',
+                            data: [120, 190, 150, 220, 180, 250],
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            }
+        };
+    </script>
+</body>
+</html>

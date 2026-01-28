@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>履约协同平台 - 服务项目设置</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        indigo: { 50: '#eef2ff', 500: '#6366f1', 600: '#4f46e5' },
+                        slate: { 50: '#f8fafc', 100: '#f1f5f9', 200: '#e2e8f0', 300: '#cbd5e1', 800: '#1e293b' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #F4F7FE; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .page-section { display: none; animation: fadeIn 0.3s ease-in-out; }
+        .page-section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* 导航选中样式 */
+        .nav-item.active { background-color: #eef2ff; color: #4f46e5; border-right: 3px solid #4f46e5; }
+        .center-nav.active { background-color: #eef2ff; color: #4f46e5; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+
+        /* 抽屉动画 - 改为从右侧划出 */
+        .drawer { transform: translateX(100%); transition: transform 0.3s ease-in-out; }
+        .drawer.open { transform: translateX(0); }
+        
+        /* 慢速旋转动画 */
+        @keyframes spin-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .animate-spin-slow { animation: spin-slow 3s linear infinite; }
+        
+        /* 卡片悬停动画 */
+        .card-hover { transition: all 0.3s ease; }
+        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); }
+        
+        /* 按钮交互效果 */
+        .btn-primary { transition: all 0.3s ease; }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.3); }
+        
+        /* 平滑滚动 */
+        html { scroll-behavior: smooth; }
+        
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            .sidebar { width: 240px; }
+            .main-content { margin-left: 240px; }
+            .grid-cols-3 { grid-template-columns: 1fr; }
+            .grid-cols-2 { grid-template-columns: 1fr; }
+        }
+        
+        /* 加载动画 */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        
+        /* 进度条动画 */
+        @keyframes progress {
+            from { width: 0%; }
+            to { width: var(--progress-width, 100%); }
+        }
+        .progress-animate { animation: progress 1.5s ease-out forwards; }
+        
+        /* 标签动画 */
+        @keyframes slideIn {
+            from { transform: translateX(-100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .slide-in { animation: slideIn 0.5s ease-out forwards; }
+        
+        /* 微交互效果 */
+        .interactive { transition: all 0.2s ease; }
+        .interactive:hover { cursor: pointer; }
+        
+        /* 表格行悬停效果 */
+        table tbody tr:hover { background-color: #f8fafc; }
+        
+        /* 表单元素焦点效果 */
+        input:focus, select:focus, textarea:focus { outline: none; ring: 2px; ring-color: #6366f1; ring-opacity: 0.5; }
+    </style>
+</head>
+<body class="text-slate-600 h-screen flex overflow-hidden font-sans">
+
+    <main class="flex-1 flex flex-col min-w-0 overflow-hidden relative bg-[#F4F7FE]">
+        
+        <div class="flex-1 overflow-y-auto p-6 relative scroll-smooth" id="scrollContainer">
+            
+            <div id="projects" class="page-section active max-w-[1600px] mx-auto space-y-6">
+                <!-- 页面标题和操作按钮 -->
+                <div class="flex justify-between items-center">
+                    <h2 class="text-2xl font-bold text-slate-800">服务项目设置</h2>
+                    <div class="flex gap-3">
+                        <button id="batchPromoteBtn" class="px-3 py-1.5 bg-slate-200 text-slate-700 rounded-md hover:bg-slate-300 flex items-center gap-1" disabled>
+                            <i data-lucide="arrow-up" class="w-4 h-4"></i> 提级支持
+                        </button>
+                        <button id="batchAssignBtn" class="px-3 py-1.5 bg-slate-200 text-slate-700 rounded-md hover:bg-slate-300 flex items-center gap-1" disabled>
+                            <i data-lucide="user-plus" class="w-4 h-4"></i> 指派支持
+                        </button>
+                        <button id="batchRemoveBtn" class="px-3 py-1.5 bg-slate-200 text-slate-700 rounded-md hover:bg-slate-300 flex items-center gap-1" disabled>
+                            <i data-lucide="trash-2" class="w-4 h-4"></i> 移除支持
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 筛选和排序 -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div class="p-6 border-b border-slate-100">
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                            <div>
+                                <label class="block text-xs text-slate-400 mb-1">组织树</label>
+                                <select class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100" id="orgFilter">
+                                    <option value="all">全部</option>
+                                    <option value="company">公司</option>
+                                    <option value="branch">分公司</option>
+                                    <option value="project">项目部</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-400 mb-1">项目名称</label>
+                                <input type="text" placeholder="请输入项目名称" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100" id="projectNameFilter">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-400 mb-1">项目状态</label>
+                                <select class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100" id="statusFilter">
+                                    <option value="all">全部</option>
+                                    <option value="pending">待处理</option>
+                                    <option value="processing">处理中</option>
+                                    <option value="completed">已完成</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-400 mb-1">服务中心</label>
+                                <select class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100" id="centerFilter">
+                                    <option value="all">全部</option>
+                                    <option value="design">设计中心</option>
+                                    <option value="tech">技术中心</option>
+                                    <option value="supply">供应链中心</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="flex flex-wrap gap-3 justify-end">
+                            <div class="flex items-center gap-2">
+                                <label class="block text-xs text-slate-400">排序：</label>
+                                <select class="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100" id="sortBy">
+                                    <option value="status">按项目状态</option>
+                                    <option value="name">按项目名称</option>
+                                    <option value="time">按最新修改时间</option>
+                                </select>
+                            </div>
+                            <button id="resetFilterBtn" class="px-3 py-1.5 bg-slate-200 text-slate-700 text-xs rounded-md hover:bg-slate-300 flex items-center gap-1">
+                                <i data-lucide="refresh-cw" class="w-3 h-3"></i> 重置
+                            </button>
+                            <button id="filterBtn" class="px-3 py-1.5 bg-indigo-600 text-white text-xs rounded-md hover:bg-indigo-700 flex items-center gap-1">
+                                <i data-lucide="search" class="w-3 h-3"></i> 筛选
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- 项目列表 -->
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-slate-50 text-slate-500 font-medium">
+                                <tr>
+                                    <th class="px-6 py-4">
+                                        <input type="checkbox" id="selectAllCheckbox" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                                    </th>
+                                    <th class="px-6 py-4">组织全称</th>
+                                    <th class="px-6 py-4">项目简称</th>
+                                    <th class="px-6 py-4">项目全称</th>
+                                    <th class="px-6 py-4">服务中心</th>
+                                    <th class="px-6 py-4">项目状态</th>
+                                    <th class="px-6 py-4">最新修改时间</th>
+                                    <th class="px-6 py-4">修改人</th>
+                                    <th class="px-6 py-4 text-right">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100" id="projectsTable">
+                                <!-- 项目数据将通过JavaScript动态生成 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 项目新增/编辑弹窗 -->
+    <div id="projectModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div class="p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 id="modalTitle" class="text-lg font-bold text-slate-800">新增项目</h3>
+                    <button id="closeModalBtn" class="text-slate-400 hover:text-slate-600 transition-colors">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+
+                <form id="projectForm">
+                    <input type="hidden" id="projectId">
+                    <div class="space-y-4">
+                        <!-- 组织信息 -->
+                        <div>
+                            <label for="orgFullName" class="block text-sm font-medium text-slate-700 mb-1">组织全称 <span class="text-red-500">*</span></label>
+                            <input type="text" id="orgFullName" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100" required>
+                        </div>
+
+                        <!-- 项目信息 -->
+                        <div>
+                            <label for="projectShortName" class="block text-sm font-medium text-slate-700 mb-1">项目简称 <span class="text-red-500">*</span></label>
+                            <input type="text" id="projectShortName" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100" required>
+                        </div>
+
+                        <div>
+                            <label for="projectFullName" class="block text-sm font-medium text-slate-700 mb-1">项目全称 <span class="text-red-500">*</span></label>
+                            <input type="text" id="projectFullName" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100" required>
+                        </div>
+
+                        <!-- 服务中心 -->
+                        <div>
+                            <label for="projectCenter" class="block text-sm font-medium text-slate-700 mb-1">服务中心 <span class="text-red-500">*</span></label>
+                            <select id="projectCenter" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100" required>
+                                <option value="">请选择</option>
+                                <option value="design">设计中心</option>
+                                <option value="tech">技术中心</option>
+                                <option value="supply">供应链中心</option>
+                            </select>
+                        </div>
+
+                        <!-- 项目状态 -->
+                        <div>
+                            <label for="projectStatus" class="block text-sm font-medium text-slate-700 mb-1">项目状态 <span class="text-red-500">*</span></label>
+                            <select id="projectStatus" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100" required>
+                                <option value="">请选择</option>
+                                <option value="pending">待处理</option>
+                                <option value="processing">处理中</option>
+                                <option value="completed">已完成</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-end gap-3 mt-8">
+                        <button type="button" id="cancelFormBtn" class="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors">
+                            取消
+                        </button>
+                        <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
+                            提交
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 初始化 Lucide 图标
+        lucide.createIcons();
+
+        // 模拟项目数据
+        const projects = [
+            {
+                id: 1,
+                orgFullName: '中建三局西南公司',
+                projectShortName: '机场T3',
+                projectFullName: '机场T3航站楼项目',
+                center: '设计中心',
+                status: 'processing',
+                updatedAt: '2026/01/27 14:30',
+                updatedBy: '张经理'
+            },
+            {
+                id: 2,
+                orgFullName: '中建三局西南公司',
+                projectShortName: '二期工程',
+                projectFullName: '二期工程项目',
+                center: '供应链中心',
+                status: 'pending',
+                updatedAt: '2026/01/26 10:15',
+                updatedBy: '李工'
+            },
+            {
+                id: 3,
+                orgFullName: '中建三局西南公司成都分公司',
+                projectShortName: '科技园区',
+                projectFullName: '科技园区建设项目',
+                center: '技术中心',
+                status: 'completed',
+                updatedAt: '2026/01/25 09:45',
+                updatedBy: '王经理'
+            }
+        ];
+
+        // DOM元素
+        const addProjectBtn = document.getElementById('addProjectBtn');
+        const batchPromoteBtn = document.getElementById('batchPromoteBtn');
+        const batchAssignBtn = document.getElementById('batchAssignBtn');
+        const batchRemoveBtn = document.getElementById('batchRemoveBtn');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const cancelFormBtn = document.getElementById('cancelFormBtn');
+        const projectModal = document.getElementById('projectModal');
+        const projectForm = document.getElementById('projectForm');
+        const modalTitle = document.getElementById('modalTitle');
+        const projectsTable = document.getElementById('projectsTable');
+        const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+        const orgFilter = document.getElementById('orgFilter');
+        const projectNameFilter = document.getElementById('projectNameFilter');
+        const statusFilter = document.getElementById('statusFilter');
+        const centerFilter = document.getElementById('centerFilter');
+        const sortBy = document.getElementById('sortBy');
+        const resetFilterBtn = document.getElementById('resetFilterBtn');
+        const filterBtn = document.getElementById('filterBtn');
+
+        // 渲染项目列表
+        function renderProjects() {
+            let filteredProjects = [...projects];
+            
+            // 筛选
+            if (orgFilter.value !== 'all') {
+                filteredProjects = filteredProjects.filter(project => {
+                    if (orgFilter.value === 'company') {
+                        return project.orgFullName.includes('公司') && !project.orgFullName.includes('分公司');
+                    } else if (orgFilter.value === 'branch') {
+                        return project.orgFullName.includes('分公司');
+                    } else if (orgFilter.value === 'project') {
+                        return project.orgFullName.includes('项目部');
+                    }
+                    return true;
+                });
+            }
+            
+            if (projectNameFilter.value) {
+                const searchTerm = projectNameFilter.value.toLowerCase();
+                filteredProjects = filteredProjects.filter(project => {
+                    return project.projectName.toLowerCase().includes(searchTerm) || 
+                           project.projectFullName.toLowerCase().includes(searchTerm);
+                });
+            }
+            
+            if (statusFilter.value !== 'all') {
+                filteredProjects = filteredProjects.filter(project => project.status === statusFilter.value);
+            }
+            
+            if (centerFilter.value !== 'all') {
+                filteredProjects = filteredProjects.filter(project => project.center === centerFilter.value);
+            }
+            
+            // 排序
+            if (sortBy.value === 'status') {
+                const statusOrder = { 'pending': 0, 'processing': 1, 'completed': 2 };
+                filteredProjects.sort((a, b) => statusOrder[a.status] - statusOrder[b.status]);
+            } else if (sortBy.value === 'name') {
+                filteredProjects.sort((a, b) => a.projectName.localeCompare(b.projectName));
+            } else if (sortBy.value === 'time') {
+                filteredProjects.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+            }
+            
+            // 渲染表格
+            projectsTable.innerHTML = filteredProjects.map(project => `
+                <tr>
+                    <td class="px-6 py-4">
+                        <input type="checkbox" class="project-checkbox rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" data-id="${project.id}">
+                    </td>
+                    <td class="px-6 py-4">${project.orgFullName}</td>
+                    <td class="px-6 py-4">${project.projectShortName}</td>
+                    <td class="px-6 py-4">${project.projectFullName}</td>
+                    <td class="px-6 py-4">
+                        <span class="px-2 py-1 ${getCenterColorClass(project.center)} rounded text-xs">${project.center}</span>
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="px-2 py-1 ${getStatusColorClass(project.status)} rounded text-xs">${getStatusText(project.status)}</span>
+                    </td>
+                    <td class="px-6 py-4">${project.updatedAt}</td>
+                    <td class="px-6 py-4">${project.updatedBy}</td>
+                    <td class="px-6 py-4 text-right">
+                        <div class="flex items-center justify-end gap-2">
+                            <button class="edit-btn px-2 py-1 text-indigo-600 hover:text-indigo-800 transition-colors" data-id="${project.id}">
+                                <i data-lucide="edit" class="w-4 h-4"></i>
+                            </button>
+                            <button class="delete-btn px-2 py-1 text-red-600 hover:text-red-800 transition-colors" data-id="${project.id}">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+            
+            // 重新初始化图标
+            lucide.createIcons();
+            
+            // 添加事件监听器
+            addEventListeners();
+        }
+
+        // 获取服务中心对应的颜色类
+        function getCenterColorClass(center) {
+            switch (center) {
+                case '设计中心':
+                    return 'bg-blue-50 text-blue-600';
+                case '技术中心':
+                    return 'bg-purple-50 text-purple-600';
+                case '供应链中心':
+                    return 'bg-cyan-50 text-cyan-600';
+                default:
+                    return 'bg-slate-50 text-slate-600';
+            }
+        }
+
+        // 获取状态对应的颜色类
+        function getStatusColorClass(status) {
+            switch (status) {
+                case 'pending':
+                    return 'bg-yellow-50 text-yellow-600';
+                case 'processing':
+                    return 'bg-blue-50 text-blue-600';
+                case 'completed':
+                    return 'bg-green-50 text-green-600';
+                default:
+                    return 'bg-slate-50 text-slate-600';
+            }
+        }
+
+        // 获取状态文本
+        function getStatusText(status) {
+            switch (status) {
+                case 'pending':
+                    return '待处理';
+                case 'processing':
+                    return '处理中';
+                case 'completed':
+                    return '已完成';
+                default:
+                    return status;
+            }
+        }
+
+        // 添加事件监听器
+        function addEventListeners() {
+            // 编辑按钮点击事件
+            document.querySelectorAll('.edit-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const id = parseInt(this.dataset.id);
+                    const project = projects.find(item => item.id === id);
+                    
+                    if (project) {
+                        modalTitle.textContent = '编辑项目';
+                        document.getElementById('projectId').value = project.id;
+                        document.getElementById('orgFullName').value = project.orgFullName;
+                        document.getElementById('projectShortName').value = project.projectShortName;
+                        document.getElementById('projectFullName').value = project.projectFullName;
+                        document.getElementById('projectCenter').value = project.center;
+                        document.getElementById('projectStatus').value = project.status;
+                        projectModal.classList.remove('hidden');
+                    }
+                });
+            });
+            
+            // 删除按钮点击事件
+            document.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const id = parseInt(this.dataset.id);
+                    
+                    if (confirm('确定要删除此项目吗？')) {
+                        const index = projects.findIndex(item => item.id === id);
+                        if (index !== -1) {
+                            projects.splice(index, 1);
+                            renderProjects();
+                            alert('项目已删除');
+                        }
+                    }
+                });
+            });
+            
+            // 项目复选框点击事件
+            document.querySelectorAll('.project-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', updateBatchButtons);
+            });
+        }
+
+        // 更新批量操作按钮状态
+        function updateBatchButtons() {
+            const checkedCount = document.querySelectorAll('.project-checkbox:checked').length;
+            batchPromoteBtn.disabled = checkedCount === 0;
+            batchAssignBtn.disabled = checkedCount === 0;
+            batchRemoveBtn.disabled = checkedCount === 0;
+            
+            if (checkedCount === 0) {
+                batchPromoteBtn.classList.add('bg-slate-200', 'text-slate-700');
+                batchPromoteBtn.classList.remove('bg-indigo-600', 'text-white');
+                batchAssignBtn.classList.add('bg-slate-200', 'text-slate-700');
+                batchAssignBtn.classList.remove('bg-indigo-600', 'text-white');
+                batchRemoveBtn.classList.add('bg-slate-200', 'text-slate-700');
+                batchRemoveBtn.classList.remove('bg-red-600', 'text-white');
+            } else {
+                batchPromoteBtn.classList.remove('bg-slate-200', 'text-slate-700');
+                batchPromoteBtn.classList.add('bg-indigo-600', 'text-white');
+                batchAssignBtn.classList.remove('bg-slate-200', 'text-slate-700');
+                batchAssignBtn.classList.add('bg-indigo-600', 'text-white');
+                batchRemoveBtn.classList.remove('bg-slate-200', 'text-slate-700');
+                batchRemoveBtn.classList.add('bg-red-600', 'text-white');
+            }
+        }
+
+
+        // 关闭弹窗
+        function closeModal() {
+            projectModal.classList.add('hidden');
+        }
+
+        closeModalBtn.addEventListener('click', closeModal);
+        cancelFormBtn.addEventListener('click', closeModal);
+
+        // 点击弹窗外部关闭
+        projectModal.addEventListener('click', (e) => {
+            if (e.target === projectModal) {
+                closeModal();
+            }
+        });
+
+        // 表单提交
+        projectForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const id = document.getElementById('projectId').value;
+            const orgFullName = document.getElementById('orgFullName').value;
+            const projectShortName = document.getElementById('projectShortName').value;
+            const projectFullName = document.getElementById('projectFullName').value;
+            const center = document.getElementById('projectCenter').value;
+            const status = document.getElementById('projectStatus').value;
+            
+            if (!orgFullName || !projectShortName || !projectFullName || !center || !status) {
+                alert('请填写所有必填字段');
+                return;
+            }
+            
+            if (id) {
+                // 编辑逻辑
+                const index = projects.findIndex(item => item.id === parseInt(id));
+                if (index !== -1) {
+                    projects[index] = {
+                        id: parseInt(id),
+                        orgFullName,
+                        projectShortName,
+                        projectFullName,
+                        center,
+                        status,
+                        updatedAt: new Date().toLocaleString('zh-CN'),
+                        updatedBy: '当前用户'
+                    };
+                    alert('项目已更新');
+                }
+            } else {
+                // 新增逻辑
+                const newId = Math.max(...projects.map(item => item.id)) + 1;
+                projects.push({
+                    id: newId,
+                    orgFullName,
+                    projectShortName,
+                    projectFullName,
+                    center,
+                    status,
+                    updatedAt: new Date().toLocaleString('zh-CN'),
+                    updatedBy: '当前用户'
+                });
+                alert('项目已新增');
+            }
+            
+            closeModal();
+            renderProjects();
+        });
+
+        // 全选/取消全选
+        selectAllCheckbox.addEventListener('change', function() {
+            document.querySelectorAll('.project-checkbox').forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+            updateBatchButtons();
+        });
+
+        // 重置筛选
+        resetFilterBtn.addEventListener('click', function() {
+            orgFilter.value = 'all';
+            projectNameFilter.value = '';
+            statusFilter.value = 'all';
+            centerFilter.value = 'all';
+            sortBy.value = 'status';
+            renderProjects();
+        });
+
+        // 筛选按钮
+        filterBtn.addEventListener('click', renderProjects);
+
+        // 排序变更
+        sortBy.addEventListener('change', renderProjects);
+
+        // 批量提级支持
+        batchPromoteBtn.addEventListener('click', function() {
+            const checkedIds = Array.from(document.querySelectorAll('.project-checkbox:checked')).map(checkbox => parseInt(checkbox.dataset.id));
+            if (checkedIds.length > 0) {
+                alert(`已提级支持 ${checkedIds.length} 个项目`);
+                // 这里可以添加实际的提级支持逻辑
+            }
+        });
+
+        // 批量指派支持
+        batchAssignBtn.addEventListener('click', function() {
+            const checkedIds = Array.from(document.querySelectorAll('.project-checkbox:checked')).map(checkbox => parseInt(checkbox.dataset.id));
+            if (checkedIds.length > 0) {
+                alert(`已指派支持 ${checkedIds.length} 个项目`);
+                // 这里可以添加实际的指派支持逻辑
+            }
+        });
+
+        // 批量移除支持
+        batchRemoveBtn.addEventListener('click', function() {
+            const checkedIds = Array.from(document.querySelectorAll('.project-checkbox:checked')).map(checkbox => parseInt(checkbox.dataset.id));
+            if (checkedIds.length > 0) {
+                if (confirm(`确定要移除支持 ${checkedIds.length} 个项目吗？`)) {
+                    alert(`已移除支持 ${checkedIds.length} 个项目`);
+                    // 这里可以添加实际的移除支持逻辑
+                }
+            }
+        });
+
+        // 初始化渲染
+        renderProjects();
+    </script>
+</body>
+</html>

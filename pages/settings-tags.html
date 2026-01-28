@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>中心价值点清单配置 - 履约协同平台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        indigo: { 50: '#eef2ff', 500: '#6366f1', 600: '#4f46e5' },
+                        slate: { 50: '#f8fafc', 100: '#f1f5f9', 200: '#e2e8f0', 300: '#cbd5e1', 800: '#1e293b' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #F4F7FE; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .page-section { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .table-row-hover:hover { background-color: #f8fafc; }
+        .form-input:focus { outline: none; ring: 2px; ring-color: #6366f1; ring-opacity: 0.5; }
+        .btn-primary { transition: all 0.3s ease; }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.3); }
+        .card-hover { transition: all 0.3s ease; }
+        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); }
+    </style>
+</head>
+<body class="text-slate-600 font-sans">
+    <div class="page-section active">
+        <div class="max-w-[1600px] mx-auto space-y-6 p-6">
+            <!-- 页面标题 -->
+            <div class="flex items-center justify-between">
+                <h2 class="text-xl font-bold text-slate-800">中心价值点清单配置</h2>
+                <button id="addIndicatorBtn" class="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors btn-primary">
+                    <i data-lucide="plus" class="w-4 h-4"></i>
+                    <span>新增指标</span>
+                </button>
+            </div>
+
+            <!-- 筛选和排序 -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 card-hover">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <!-- 支持中心筛选 -->
+                    <div>
+                        <label for="centerFilter" class="block text-xs text-slate-400 mb-1">支持中心</label>
+                        <select id="centerFilter" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-300">
+                            <option value="all">全部</option>
+                            <option value="总包中心">总包中心</option>
+                            <option value="设计中心">设计中心</option>
+                            <option value="技术中心">技术中心</option>
+                            <option value="商务中心">商务中心</option>
+                            <option value="供应链中心">供应链中心</option>
+                        </select>
+                    </div>
+
+                    <!-- 指标类型筛选 -->
+                    <div>
+                        <label for="typeFilter" class="block text-xs text-slate-400 mb-1">指标类型</label>
+                        <select id="typeFilter" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-300">
+                            <option value="all">全部</option>
+                            <option value="个性">个性</option>
+                            <option value="共性">共性</option>
+                        </select>
+                    </div>
+
+                    <!-- 排序 -->
+                    <div>
+                        <label for="sortBy" class="block text-xs text-slate-400 mb-1">排序方式</label>
+                        <select id="sortBy" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-300">
+                            <option value="center">按支持中心</option>
+                            <option value="name">按指标名称</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 指标库列表 -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden card-hover">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left">
+                        <thead class="bg-slate-50 text-slate-500 font-medium">
+                            <tr>
+                                <th class="px-6 py-4">指标名称</th>
+                                <th class="px-6 py-4">支持中心</th>
+                                <th class="px-6 py-4">指标类型</th>
+                                <th class="px-6 py-4">核心价值点</th>
+                                <th class="px-6 py-4">指标描述</th>
+                                <th class="px-6 py-4">指标单位</th>
+                                <th class="px-6 py-4 text-right">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="indicatorsTable" class="divide-y divide-slate-100">
+                            <!-- 数据将通过JavaScript动态生成 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 指标新增/编辑弹窗 -->
+    <div id="indicatorModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div class="p-6 border-b border-slate-100">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 id="modalTitle" class="text-lg font-bold text-slate-800">新增指标</h3>
+                    <button id="closeModalBtn" class="text-slate-400 hover:text-slate-600 transition-colors">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="p-6">
+                <form id="indicatorForm">
+                    <input type="hidden" id="indicatorId">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- 指标名称 -->
+                        <div>
+                            <label for="indicatorName" class="block text-sm font-medium text-slate-700 mb-1">指标名称 <span class="text-red-500">*</span></label>
+                            <input type="text" id="indicatorName" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-100 focus:border-indigo-300" required>
+                        </div>
+
+                        <!-- 支持中心 -->
+                        <div>
+                            <label for="indicatorCenter" class="block text-sm font-medium text-slate-700 mb-1">支持中心 <span class="text-red-500">*</span></label>
+                            <select id="indicatorCenter" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-100 focus:border-indigo-300" required>
+                                <option value="">请选择</option>
+                                <option value="总包中心">总包中心</option>
+                                <option value="设计中心">设计中心</option>
+                                <option value="技术中心">技术中心</option>
+                                <option value="商务中心">商务中心</option>
+                                <option value="供应链中心">供应链中心</option>
+                            </select>
+                        </div>
+
+                        <!-- 指标类型 -->
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">指标类型 <span class="text-red-500">*</span></label>
+                            <div class="flex gap-4">
+                                <label class="flex items-center gap-2">
+                                    <input type="radio" name="indicatorType" value="个性" class="text-indigo-600" required>
+                                    <span>个性</span>
+                                </label>
+                                <label class="flex items-center gap-2">
+                                    <input type="radio" name="indicatorType" value="共性" class="text-indigo-600" required>
+                                    <span>共性</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- 指标单位 -->
+                        <div>
+                            <label for="indicatorUnit" class="block text-sm font-medium text-slate-700 mb-1">指标单位 <span class="text-red-500">*</span></label>
+                            <input type="text" id="indicatorUnit" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-100 focus:border-indigo-300" required>
+                        </div>
+
+                        <!-- 核心价值点 -->
+                        <div class="md:col-span-2">
+                            <label for="indicatorValue" class="block text-sm font-medium text-slate-700 mb-1">核心价值点 <span class="text-red-500">*</span></label>
+                            <input type="text" id="indicatorValue" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-100 focus:border-indigo-300" required>
+                        </div>
+
+                        <!-- 指标描述 -->
+                        <div class="md:col-span-2">
+                            <label for="indicatorDesc" class="block text-sm font-medium text-slate-700 mb-1">指标描述 <span class="text-red-500">*</span></label>
+                            <textarea id="indicatorDesc" rows="3" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-100 focus:border-indigo-300" required></textarea>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-end gap-3 mt-8">
+                        <button type="button" id="cancelFormBtn" class="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors">
+                            取消
+                        </button>
+                        <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors btn-primary">
+                            提交
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 初始化Lucide图标
+        lucide.createIcons();
+
+        // 从图片中提取的mock数据
+        const indicators = [
+            // 共性指标
+            { id: 1, name: '支持增收达产', center: '所有中心', type: '共性', value: '确保服务项目人均营收', desc: '确保分中心服务项目人均营收≥820万元', unit: '万元' },
+            { id: 2, name: '支撑节点达成', center: '所有中心', type: '共性', value: '确保项目一级节点完成率', desc: '确保分中心服务项目一级节点完成率≥95%', unit: '%' },
+            { id: 3, name: '项目创效管理', center: '所有中心', type: '共性', value: '负责项目创效管理', desc: '确保分中心服务项目"三优一创"价值管理工作，总体创效率不低于3%，重计量、结算核对量差效益率不低于2%，单采责任成本降低率不低于3.5%', unit: '%' },
+            
+            // 总包中心个性指标
+            { id: 4, name: '新开标准项目策划编审', center: '总包中心', type: '个性', value: '负责牵头新开标准项目策划编审', desc: '确保项目启动会召开后30天内完成项目策划编制，策划点及策划金额需覆盖项目B值要求', unit: '天' },
+            { id: 5, name: '全专业计划编制', center: '总包中心', type: '个性', value: '支持新开项目全专业计划编制', desc: '包括全专业总进度计划、关键节点计划、工序穿插计划等，确保项目启动会召开后30天内完成计划编制、合同工期编审压缩率≥15%', unit: '%' },
+            { id: 6, name: '全专业履约支持', center: '总包中心', type: '个性', value: '牵头项目全专业履约支持', desc: '包括机电、装饰工程、幕墙及园林等专业工程的工序穿插、定样定板工作，专业工程计划管控、质量管控要点梳理等，确保新开申请项目、重点项目履约支持100%覆盖', unit: '%' },
+            
+            // 技术中心个性指标
+            { id: 7, name: '技术方案创新点', center: '技术中心', type: '个性', value: '衡量技术创新能力', desc: '技术方案中的创新点数量和质量', unit: '个' },
+            { id: 8, name: '技术方案审核', center: '技术中心', type: '个性', value: '技术方案审核专业度', desc: '技术方案审核专业度高，建议加快审核速度', unit: '项' },
+            { id: 9, name: '标准类项目技术策划', center: '技术中心', type: '个性', value: '支持标准类项目技术策划', desc: '确保新开工标准类项目、申请项目100%覆盖，公司审批通过率100%。策划点支撑项目核心价值点、"三优一创"要求', unit: '%' },
+            { id: 10, name: '项目施组编制', center: '技术中心', type: '个性', value: '支持项目施组编制', desc: '负责项目方案编制。确保申请项目施组（方案）审批通过率100%。方案经济比选创效率不低于0.45%', unit: '%' },
+            
+            // 设计中心个性指标
+            { id: 11, name: '设计方案通过率', center: '设计中心', type: '个性', value: '衡量设计质量', desc: '设计方案一次通过率', unit: '%' },
+            { id: 12, name: 'EPC项目设计策划管理', center: '设计中心', type: '个性', value: '负责EPC项目设计策划管理', desc: '确保EPC项目策划优化上图率不低于80%', unit: '%' },
+            { id: 13, name: '设计出图节点管理', center: '设计中心', type: '个性', value: '负责EPC项目设计出图节点管理', desc: '确保设计出图一级节点完成率≥95%、二级节点完成率≥90%', unit: '%' },
+            { id: 14, name: '图纸质量精细化审查', center: '设计中心', type: '个性', value: '负责全专业图纸质量精细化审查', desc: '解决设计缺陷问题。重点类项目解决设计缺陷问题不少于100项，标准类项目解决设计缺陷问题不少于50项', unit: '项' },
+            
+            // 商务中心个性指标
+            { id: 15, name: '施工图预算编制及核对', center: '商务中心', type: '个性', value: '负责施工图预算编制及核对', desc: '确保新开工项目施工图下发后60天内100%完成三版施工图预算，夯实项目精细化管控基础', unit: '天' },
+            { id: 16, name: '技术方案审核', center: '商务中心', type: '个性', value: '技术方案审核专业度', desc: '技术方案审核专业度高，建议加快审核速度', unit: '项' },
+            { id: 17, name: 'EPC项目概算管控', center: '商务中心', type: '个性', value: '负责EPC项目概算管控', desc: '确保EPC项目概算100%受控', unit: '%' },
+            { id: 18, name: '限额调整', center: '商务中心', type: '个性', value: '支持限额调整', desc: '引导限额向高效益释放，限额释放部分（实际实施限额-招标限额）效益率高于12%', unit: '%' },
+            
+            // 供应链中心个性指标
+            { id: 19, name: '项目合约规划编审', center: '供应链中心', type: '个性', value: '组织项目合约规划编审', desc: '确保项目启动会后30天完成合约规划上线', unit: '天' },
+            { id: 20, name: '项目采购及时性', center: '供应链中心', type: '个性', value: '及时开展项目采购', desc: '确保项目采购及时率不低于85%', unit: '%' },
+            { id: 21, name: '严选商城交易创效', center: '供应链中心', type: '个性', value: '推进严选商城交易创效', desc: '确保创效额不低于1.2亿元', unit: '亿元' }
+        ];
+
+        // DOM元素
+        const addIndicatorBtn = document.getElementById('addIndicatorBtn');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const cancelFormBtn = document.getElementById('cancelFormBtn');
+        const indicatorModal = document.getElementById('indicatorModal');
+        const indicatorForm = document.getElementById('indicatorForm');
+        const modalTitle = document.getElementById('modalTitle');
+        const indicatorsTable = document.getElementById('indicatorsTable');
+        const centerFilter = document.getElementById('centerFilter');
+        const typeFilter = document.getElementById('typeFilter');
+        const sortBy = document.getElementById('sortBy');
+
+        // 打开新增弹窗
+        addIndicatorBtn.addEventListener('click', () => {
+            modalTitle.textContent = '新增指标';
+            document.getElementById('indicatorId').value = '';
+            document.getElementById('indicatorName').value = '';
+            document.getElementById('indicatorCenter').value = '';
+            document.querySelector('input[name="indicatorType"][value="个性"]').checked = false;
+            document.querySelector('input[name="indicatorType"][value="共性"]').checked = false;
+            document.getElementById('indicatorValue').value = '';
+            document.getElementById('indicatorDesc').value = '';
+            document.getElementById('indicatorUnit').value = '';
+            indicatorModal.classList.remove('hidden');
+        });
+
+        // 关闭弹窗
+        function closeModal() {
+            indicatorModal.classList.add('hidden');
+        }
+
+        closeModalBtn.addEventListener('click', closeModal);
+        cancelFormBtn.addEventListener('click', closeModal);
+
+        // 点击弹窗外部关闭
+        indicatorModal.addEventListener('click', (e) => {
+            if (e.target === indicatorModal) {
+                closeModal();
+            }
+        });
+
+        // 编辑指标
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.edit-btn')) {
+                const btn = e.target.closest('.edit-btn');
+                const id = parseInt(btn.dataset.id);
+                const indicator = indicators.find(item => item.id === id);
+                
+                if (indicator) {
+                    modalTitle.textContent = '编辑指标';
+                    document.getElementById('indicatorId').value = indicator.id;
+                    document.getElementById('indicatorName').value = indicator.name;
+                    document.getElementById('indicatorCenter').value = indicator.center;
+                    document.querySelector(`input[name="indicatorType"][value="${indicator.type}"]`).checked = true;
+                    document.getElementById('indicatorValue').value = indicator.value;
+                    document.getElementById('indicatorDesc').value = indicator.desc;
+                    document.getElementById('indicatorUnit').value = indicator.unit;
+                    indicatorModal.classList.remove('hidden');
+                }
+            }
+        });
+
+        // 废弃指标
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.disable-btn')) {
+                const btn = e.target.closest('.disable-btn');
+                const id = parseInt(btn.dataset.id);
+                
+                if (confirm('确定要废弃此指标吗？')) {
+                    // 这里可以添加废弃逻辑
+                    alert('指标已废弃');
+                }
+            }
+        });
+
+        // 表单提交
+        indicatorForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const id = document.getElementById('indicatorId').value;
+            const name = document.getElementById('indicatorName').value;
+            const center = document.getElementById('indicatorCenter').value;
+            const type = document.querySelector('input[name="indicatorType"]:checked')?.value;
+            const value = document.getElementById('indicatorValue').value;
+            const desc = document.getElementById('indicatorDesc').value;
+            const unit = document.getElementById('indicatorUnit').value;
+            
+            if (!name || !center || !type || !value || !desc || !unit) {
+                alert('请填写所有必填字段');
+                return;
+            }
+            
+            if (id) {
+                // 编辑逻辑
+                const index = indicators.findIndex(item => item.id === parseInt(id));
+                if (index !== -1) {
+                    indicators[index] = {
+                        id: parseInt(id),
+                        name,
+                        center,
+                        type,
+                        value,
+                        desc,
+                        unit
+                    };
+                    alert('指标已更新');
+                }
+            } else {
+                // 新增逻辑
+                const newId = Math.max(...indicators.map(item => item.id)) + 1;
+                indicators.push({
+                    id: newId,
+                    name,
+                    center,
+                    type,
+                    value,
+                    desc,
+                    unit
+                });
+                alert('指标已新增');
+            }
+            
+            closeModal();
+            renderIndicators();
+        });
+
+        // 筛选和排序
+        function renderIndicators() {
+            const centerValue = centerFilter.value;
+            const typeValue = typeFilter.value;
+            const sortValue = sortBy.value;
+            
+            // 筛选
+            let filteredIndicators = indicators;
+            if (centerValue !== 'all') {
+                filteredIndicators = filteredIndicators.filter(item => item.center === centerValue);
+            }
+            if (typeValue !== 'all') {
+                filteredIndicators = filteredIndicators.filter(item => item.type === typeValue);
+            }
+            
+            // 排序
+            if (sortValue === 'center') {
+                filteredIndicators.sort((a, b) => a.center.localeCompare(b.center));
+            } else if (sortValue === 'name') {
+                filteredIndicators.sort((a, b) => a.name.localeCompare(b.name));
+            }
+            
+            // 渲染表格
+            indicatorsTable.innerHTML = filteredIndicators.map(item => `
+                <tr class="table-row-hover">
+                    <td class="px-6 py-4 whitespace-nowrap font-medium">${item.name}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 py-1 ${item.center === '总包中心' ? 'bg-blue-50 text-blue-600' : item.center === '技术中心' ? 'bg-purple-50 text-purple-600' : item.center === '设计中心' ? 'bg-indigo-50 text-indigo-600' : item.center === '商务中心' ? 'bg-orange-50 text-orange-600' : item.center === '供应链中心' ? 'bg-cyan-50 text-cyan-600' : 'bg-green-50 text-green-600'} rounded text-xs">${item.center}</span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 py-1 ${item.type === '共性' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'} rounded-full text-xs">${item.type}</span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">${item.value}</td>
+                    <td class="px-6 py-4">${item.desc}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${item.unit}</td>
+                    <td class="px-6 py-4 text-right">
+                        <div class="flex items-center justify-end gap-2">
+                            <button class="edit-btn px-2 py-1 text-indigo-600 hover:text-indigo-800 transition-colors" data-id="${item.id}">
+                                <i data-lucide="edit" class="w-4 h-4"></i>
+                            </button>
+                            <button class="disable-btn px-2 py-1 text-amber-600 hover:text-amber-800 transition-colors" data-id="${item.id}">
+                                <i data-lucide="archive" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+            
+            // 重新初始化图标
+            lucide.createIcons();
+        }
+
+        // 筛选和排序事件
+        centerFilter.addEventListener('change', renderIndicators);
+        typeFilter.addEventListener('change', renderIndicators);
+        sortBy.addEventListener('change', renderIndicators);
+
+        // 初始化渲染
+        renderIndicators();
+    </script>
+</body>
+</html>
