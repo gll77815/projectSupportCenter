@@ -1,5 +1,8 @@
 // 使用IIFE封装路由系统，避免变量冲突
 (function() {
+    // GitHub Pages基础URL
+    const BASE_URL = 'https://gll77815.github.io/projectSupportCenter/';
+    
     // 路由配置对象
     const routes = {
         '/': {
@@ -211,9 +214,10 @@
             this.contentContainer.innerHTML = '<div class="flex items-center justify-center h-64"><div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-indigo-500"></div></div>';
 
             // 使用fetch加载页面内容
-            // 确保使用绝对路径，避免基于当前URL解析相对路径
-            const absolutePath = pagePath.startsWith('/') ? pagePath : '/' + pagePath;
-            fetch(absolutePath)
+            // 使用GitHub Pages绝对URL
+            const absolutePath = pagePath.startsWith('/') ? pagePath.substring(1) : pagePath;
+            const fullUrl = BASE_URL + absolutePath;
+            fetch(fullUrl)
                 .then(response => {
                     console.log('Fetch response status:', response.status);
                     if (!response.ok) {
@@ -305,8 +309,23 @@
 
         // 导航到指定路径
         navigate(path) {
+            // 在GitHub Pages中，需要确保路径包含仓库名称前缀
+            const repoName = 'projectSupportCenter';
+            const currentPath = window.location.pathname;
+            let fullPath = path;
+            
+            // 检查当前路径是否已经包含仓库名称
+            if (currentPath.includes(repoName) && !path.includes(repoName)) {
+                // 如果路径以/开头，移除它
+                if (path.startsWith('/')) {
+                    path = path.substring(1);
+                }
+                // 添加仓库名称前缀
+                fullPath = '/' + repoName + '/' + path;
+            }
+            
             // 更新浏览器历史
-            history.pushState(null, null, path);
+            history.pushState(null, null, fullPath);
             // 处理路由变化
             this.handleRouteChange();
         }
@@ -339,7 +358,18 @@
             } else {
                 // 路由系统未初始化，使用默认导航
                 console.warn('路由系统未初始化，使用默认导航');
-                window.location.href = path;
+                
+                // 构建完整的GitHub Pages URL
+                let fullUrl = path;
+                if (!path.startsWith('http')) {
+                    // 如果是相对路径，使用GitHub Pages基础URL
+                    if (path.startsWith('/')) {
+                        path = path.substring(1);
+                    }
+                    fullUrl = BASE_URL + path;
+                }
+                
+                window.location.href = fullUrl;
             }
         }
     }
