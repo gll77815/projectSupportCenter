@@ -1,0 +1,1798 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>履约协同平台 - 服务评价</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        indigo: { 50: '#eef2ff', 500: '#6366f1', 600: '#4f46e5' },
+                        slate: { 50: '#f8fafc', 100: '#f1f5f9', 200: '#e2e8f0', 300: '#cbd5e1', 800: '#1e293b' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #F4F7FE; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .page-section { display: none; animation: fadeIn 0.3s ease-in-out; }
+        .page-section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* 导航选中样式 */
+        .nav-item.active { background-color: #eef2ff; color: #4f46e5; border-right: 3px solid #4f46e5; }
+        .center-nav.active { background-color: #eef2ff; color: #4f46e5; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+
+        /* 抽屉动画 - 改为从右侧划出 */
+        .drawer { transform: translateX(100%); transition: transform 0.3s ease-in-out; }
+        .drawer.open { transform: translateX(0); }
+        
+        /* 慢速旋转动画 */
+        @keyframes spin-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .animate-spin-slow { animation: spin-slow 3s linear infinite; }
+        
+        /* 卡片悬停动画 */
+        .card-hover { transition: all 0.3s ease; }
+        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 10px 10px -5px rgba(0, 0, 0, 0.06); }
+        
+        /* 卡片选中状态 */
+        .card-hover.selected {
+            background-color: #dbeafe !important;
+            border: 2px solid #3b82f6;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 10px 10px -5px rgba(0, 0, 0, 0.06);
+            transition: all 0.3s ease;
+        }
+        
+        /* 绿色卡片选中状态 */
+        .card-hover.green.selected {
+            background-color: #dcfce7 !important;
+            border: 2px solid #22c55e;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 10px 10px -5px rgba(0, 0, 0, 0.06);
+            transition: all 0.3s ease;
+        }
+        
+        /* 按钮交互效果 */
+        .btn-primary { transition: all 0.3s ease; }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.3); }
+        
+        /* 平滑滚动 */
+        html { scroll-behavior: smooth; }
+        
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            .sidebar { width: 240px; }
+            .main-content { margin-left: 240px; }
+            .grid-cols-3 { grid-template-columns: 1fr; }
+            .grid-cols-2 { grid-template-columns: 1fr; }
+        }
+        
+        /* 加载动画 */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        
+        /* 进度条动画 */
+        @keyframes progress {
+            from { width: 0%; }
+            to { width: var(--progress-width, 100%); }
+        }
+        .progress-animate { animation: progress 1.5s ease-out forwards; }
+        
+        /* 标签动画 */
+        @keyframes slideIn {
+            from { transform: translateX(-100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .slide-in { animation: slideIn 0.5s ease-out forwards; }
+        
+        /* 微交互效果 */
+        .interactive { transition: all 0.2s ease; }
+        .interactive:hover { cursor: pointer; }
+        
+        /* 表格行悬停效果 */
+        table tbody tr:hover { background-color: #f8fafc; }
+        
+        /* 表单元素焦点效果 */
+        input:focus, select:focus, textarea:focus { outline: none; box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.5); }
+        
+        /* 卡片按钮样式 */
+        .card-hover button {
+            position: relative;
+            z-index: 1;
+        }
+
+        /* 悬浮按钮样式 */
+        #floatingButtons {
+            animation: fadeInUp 0.3s ease-out forwards;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translate(-50%, 20px);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, 0);
+            }
+        }
+
+        /* 悬浮按钮响应式设计 */
+        @media (max-width: 768px) {
+            #floatingButtons {
+                max-width: 20rem;
+            }
+            #decisionButtons,
+            #tasksButtons {
+                flex-wrap: wrap;
+                gap: 4px;
+            }
+            #decisionButtons button,
+            #tasksButtons button {
+                padding: 0.375rem 0.75rem;
+                font-size: 12px;
+            }
+            #tasksButtons button {
+                flex: 1;
+                min-width: 80px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            #floatingButtons {
+                max-width: 90%;
+            }
+            #decisionButtons button {
+                padding: 0.375rem 1rem;
+            }
+        }
+    </style>
+</head>
+<body class="text-slate-600 h-screen flex flex-col overflow-hidden font-sans">
+
+    <header class="bg-white backdrop-blur-md sticky top-0 z-40 py-3 flex justify-between items-center border-b border-slate-100 shadow-sm w-full px-0 md:px-4">
+        <div class="flex items-center gap-4">
+            <img src="../image-1.png" alt="数字运营平台" class="h-8 cursor-pointer hover:opacity-80 transition-opacity" id="systemLogo">
+            <div class="flex items-center gap-3">
+                <h1 id="pageTitle" class="text-lg font-bold text-slate-800 cursor-pointer hover:text-indigo-600 transition-colors">平台化履约管理</h1>
+            </div>
+        </div>
+        <div class="flex items-center gap-4">
+            <div class="relative flex items-center">
+                <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4"></i>
+                <input type="text" placeholder="搜索..." class="pl-10 pr-12 py-1.5 bg-slate-100 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100 w-48 border-transparent transition-all focus:w-64">
+
+            </div>
+            <a href="https://ai-know.cscec3b-iti.com/web/chat" target="_blank" class="flex items-center justify-center p-1.5 rounded-full hover:bg-slate-50 transition-colors">
+                <img src="../image.png" alt="AI知识" class="w-24 h-8">
+            </a>
+            <button id="nav-notifications" class="relative p-2 bg-white rounded-full hover:bg-slate-50 border border-slate-100 shadow-sm">
+                <i data-lucide="bell" class="w-5 h-5 text-slate-600"></i>
+                <span class="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full"></span>
+            </button>
+            <div id="nav-profile" class="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors group ml-2">
+                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" class="w-8 h-8 rounded-full bg-indigo-50 border-2 border-transparent group-hover:border-indigo-200" alt="User">
+                <div class="overflow-hidden">
+                    <div class="text-sm font-bold text-slate-800">张经理</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex flex-1 overflow-hidden">
+    <aside class="w-64 bg-white border-r border-slate-100 flex flex-col flex-shrink-0 z-30 transition-all relative">
+
+        
+        <nav class="flex-1 px-4 mt-4 space-y-1 overflow-y-auto no-scrollbar" id="mainNav">
+            
+            <div class="mb-6 relative">
+                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 mx-2 relative">
+                        <div class="text-[10px] text-slate-400 mb-1">切换支持中心</div>
+                        <div class="flex items-center justify-between cursor-pointer group" onclick="toggleOrgMenu()">
+                            <span id="currentOrg" class="text-sm font-bold text-slate-800 truncate">西南公司总包中心</span>
+                            <i data-lucide="chevrons-up-down"
+                                class="w-4 h-4 text-slate-400 group-hover:text-indigo-600"></i>
+                        </div>
+                        <div id="orgMenu"
+                            class="hidden absolute top-full left-2 right-2 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-50 py-2">
+                            <div onclick="changeOrg('西南公司总包中心')"
+                                class="text-xs p-2 hover:bg-slate-50 rounded cursor-pointer text-indigo-600 font-medium">
+                                西南公司总包中心</div>
+                            <div onclick="changeOrg('西南公司设计支持中心')"
+                                class="text-xs p-2 hover:bg-slate-50 rounded cursor-pointer">西南公司设计支持中心</div>
+                            <div onclick="changeOrg('西南公司技术支持中心')"
+                                class="text-xs p-2 hover:bg-slate-50 rounded cursor-pointer">西南公司技术支持中心</div>
+                            <div onclick="changeOrg('西南公司商务支持中心')"
+                                class="text-xs p-2 hover:bg-slate-50 rounded cursor-pointer text-indigo-600 font-medium">
+                                西南公司商务支持中心</div>
+                            <div onclick="changeOrg('西南公司供应链支持中心')"
+                                class="text-xs p-2 hover:bg-slate-50 rounded cursor-pointer">西南公司供应链支持中心</div>
+
+                        </div>
+                    </div>
+                </div>
+
+            <div class="space-y-1 mb-6">
+                <!-- 决策中心卡片 -->
+                <div id="decisionCard" class="bg-blue-50 rounded-2xl p-4 shadow-sm border border-transparent relative group hover:shadow-md transition-all duration-300 mx-2 mb-4 cursor-pointer card-hover">
+                    <button class="flex items-center justify-between w-full text-left" onclick="navigateTo('dashboard.html')">
+                        <div class="flex-1 pr-4">
+                            <h3 class="font-medium text-slate-800">决策中心</h3>
+                            <div class="flex items-center mt-1">
+                                <p class="text-xs text-slate-400">态势感知、议案决策</p>
+                            </div>
+                        </div>
+                        <div class="w-1/4 flex justify-end items-center">
+                            <span class="text-2xl font-bold text-blue-600">8</span>
+                        </div>
+                    </button>
+                </div>
+                
+                <!-- 任务大厅卡片 -->
+                <div id="tasksCard" class="bg-green-50 rounded-2xl p-4 shadow-sm border border-transparent relative group hover:shadow-md transition-all duration-300 mx-2 mb-4 cursor-pointer card-hover green">
+                    <button class="flex items-center justify-between w-full text-left" onclick="navigateTo('tasks')">
+                        <div class="flex-1 pr-4">
+                            <h3 class="font-medium text-slate-800">任务大厅</h3>
+                            <div class="flex items-center mt-1">
+                                <p class="text-xs text-slate-400">重点工作、服务支持</p>
+                            </div>
+                        </div>
+                        <div class="w-1/4 flex justify-end items-center">
+                            <span class="text-2xl font-bold text-green-600">6</span>
+                        </div>
+                    </button>
+                </div>
+                
+                <!-- 服务评价 -->
+                <div class="relative">
+                    <button id="nav-evaluation" class="nav-item w-full flex items-center justify-between px-4 py-3 text-slate-500 rounded-xl font-medium transition-all hover:bg-slate-50 relative">
+                        <div class="flex items-center gap-3">
+                            <i data-lucide="star" class="w-5 h-5"></i> 服务评价
+                        </div>
+                        <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 transition-transform"></i>
+                    </button>
+                    <!-- 二级目录 -->
+                    <div class="pl-8 pr-4 py-2 space-y-1">
+                        <button class="w-full text-left flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg transition-colors" onclick="navigateTo('/evaluation/dashboard')">
+                            <i data-lucide="file-text" class="w-4 h-4"></i> 项目服务评价
+                        </button>
+                        <button class="w-full text-left flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg transition-colors" onclick="navigateTo('evaluation/quarterly')">
+                            <i data-lucide="calendar" class="w-4 h-4"></i> 季度项目服务评价
+                        </button>
+                        <button class="w-full text-left flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg transition-colors" onclick="navigateTo('evaluation/monthly')">
+                            <i data-lucide="calendar-days" class="w-4 h-4"></i> 季度部门中心评价
+                        </button>
+                        <button class="w-full text-left flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg transition-colors" onclick="navigateTo('evaluation/leader')">
+                            <i data-lucide="user" class="w-4 h-4"></i> 领导评价
+                        </button>
+                    </div>
+                </div>
+                <!-- 风险预控 -->
+                <div class="relative">
+                    <button id="nav-risk" class="nav-item w-full flex items-center justify-between px-4 py-3 text-slate-500 rounded-xl font-medium transition-all hover:bg-slate-50">
+                        <div class="flex items-center gap-3">
+                            <i data-lucide="shield-alert" class="w-5 h-5"></i> 风险预控
+                        </div>
+                        <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 transition-transform"></i>
+                    </button>
+                    <!-- 二级目录 -->
+                    <div class="pl-8 pr-4 py-2 space-y-1">
+                        <button class="w-full text-left flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg transition-colors" onclick="navigateTo('risk/disposal')">
+                            <i data-lucide="clipboard-list" class="w-4 h-4"></i> 风险处置
+                        </button>
+                        <button class="w-full text-left flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg transition-colors" onclick="navigateTo('risk/issues')">
+                            <i data-lucide="alert-circle" class="w-4 h-4"></i> 项目履约问题清单
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 绩效考核 -->
+                <div class="relative">
+                    <button id="nav-performance" class="nav-item w-full flex items-center justify-between px-4 py-3 text-slate-500 rounded-xl font-medium transition-all hover:bg-slate-50">
+                        <div class="flex items-center gap-3">
+                            <i data-lucide="trending-up" class="w-5 h-5"></i> 绩效考核
+                        </div>
+                        <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 transition-transform"></i>
+                    </button>
+                    <!-- 二级目录 -->
+                    <div class="pl-8 pr-4 py-2 space-y-1">
+                        <button class="w-full text-left flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg transition-colors" onclick="navigateTo('performance/annual')">
+                            <i data-lucide="file-check" class="w-4 h-4"></i> 目标责任书
+                        </button>
+                        <button class="w-full text-left flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg transition-colors" onclick="navigateTo('performance/annual')">
+                            <i data-lucide="award" class="w-4 h-4"></i> 年度绩效考核
+                        </button>
+                        <button class="w-full text-left flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg transition-colors" onclick="navigateTo('performance/details')">
+                            <i data-lucide="list-checks" class="w-4 h-4"></i> 履职达成明细
+                        </button>
+                    </div>
+                </div>
+
+
+
+                <!-- 系统设置 -->
+                <div class="relative">
+                    <button id="nav-settings" class="nav-item w-full flex items-center justify-between px-4 py-3 text-slate-500 rounded-xl font-medium transition-all hover:bg-slate-50">
+                        <div class="flex items-center gap-3">
+                            <i data-lucide="settings" class="w-5 h-5"></i> 系统设置
+                        </div>
+                        <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 transition-transform"></i>
+                    </button>
+                    <!-- 二级目录 -->
+                    <div class="pl-8 pr-4 py-2 space-y-1">
+                                <button class="w-full text-left flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg transition-colors" onclick="navigateTo('settings/tags')">
+                                    <i data-lucide="target" class="w-4 h-4"></i> 中心价值点配置
+                                </button>
+                                <button class="w-full text-left flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg transition-colors" onclick="navigateTo('settings/projects')">
+                                    <i data-lucide="folder" class="w-4 h-4"></i> 服务项目设置
+                                </button>
+                                <button class="w-full text-left flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg transition-colors" onclick="window.open('https://sjxk.cscec3b-iti.com/construction-management-platform-front/#/business-registration/activity-regist', '_blank')">
+                                    <i data-lucide="clock" class="w-4 h-4"></i> 任务自动调度设置
+                                </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="border-t border-slate-100 my-4"></div>
+            
+            <div class="mb-6 space-y-1">
+            </div>
+
+            <div class="border-t border-slate-100 my-4"></div>
+
+        </nav>
+
+
+    </aside>
+
+    <main class="flex-1 flex flex-col min-w-0 overflow-hidden relative bg-[#F4F7FE]">
+        <!-- 面包屑导航 -->
+        <div class="p-3 border-b border-slate-100 bg-[#F4F7FE]">
+            <div class="flex items-center gap-2 text-sm" id="breadcrumbNav">
+                <button class="flex items-center gap-1 text-slate-600 hover:text-indigo-600 transition-colors" onclick="navigateTo('/')">
+                    <i data-lucide="grid" class="w-4 h-4"></i>
+                </button>
+                <span class="text-slate-400">/</span>
+                <span class="text-slate-600 hover:text-indigo-600 transition-colors cursor-pointer">首页</span>
+                <span class="text-slate-400">/</span>
+                <span class="text-slate-800 font-medium" id="currentPageName">服务评价</span>
+                <button class="ml-auto flex items-center gap-1.5 text-slate-600 hover:text-indigo-600 transition-colors" onclick="goBack()">
+                    <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                    <span>返回上级</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-6 relative scroll-smooth" id="scrollContainer">
+            
+            <div id="evaluation" class="page-section active max-w-[1600px] mx-auto space-y-6">
+                <!-- 态势指标卡片 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-blue-50 rounded-2xl p-5 shadow-sm border border-blue-100 hover:shadow-md transition-shadow cursor-pointer" id="pendingEvaluationCard" onclick="filterByStatus('pending')">
+                        <div class="flex items-center gap-2 mb-3">
+                            <i data-lucide="clipboard-list" class="w-5 h-5 text-blue-500"></i>
+                            <h3 class="font-bold text-slate-800">待评价数量</h3>
+                        </div>
+                        <p class="text-3xl font-bold text-slate-800">20</p>
+                        <p class="text-xs text-slate-400 mt-1">等待评价的服务项目</p>
+                    </div>
+                    <div class="bg-red-50 rounded-2xl p-5 shadow-sm border border-red-100 hover:shadow-md transition-shadow cursor-pointer" id="urgentEvaluationCard" onclick="filterByStatus('urgent')">
+                        <div class="flex items-center gap-2 mb-3">
+                            <i data-lucide="flag" class="w-5 h-5 text-red-500"></i>
+                            <h3 class="font-bold text-slate-800">催办数量</h3>
+                        </div>
+                        <p class="text-3xl font-bold text-slate-800">5</p>
+                        <p class="text-xs text-slate-400 mt-1">需要催办的评价任务</p>
+                    </div>
+                </div>
+                
+
+
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div class="p-6 border-b border-slate-100">
+                        <div class="flex flex-wrap gap-4 items-center justify-between mb-6">
+                            <h3 class="font-bold text-lg text-slate-800">服务评价明细</h3>
+                            <div class="flex flex-wrap gap-3">
+                                <button class="px-3 py-1.5 bg-indigo-600 text-white text-xs rounded-md hover:bg-indigo-700 flex items-center gap-1">
+                                    <i data-lucide="download" class="w-3 h-3"></i> 导出
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                            <div>
+                                <label class="block text-xs text-slate-400 mb-1">服务名称</label>
+                                <input type="text" placeholder="请输入服务名称" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-400 mb-1">任务项类型</label>
+                                <select class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                                    <option>全部</option>
+                                    <option>设计任务</option>
+                                    <option>采购任务</option>
+                                    <option>技术支持</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-400 mb-1">支持中心</label>
+                                <select class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                                    <option>全部</option>
+                                    <option>设计中心</option>
+                                    <option>技术中心</option>
+                                    <option>供应链中心</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-400 mb-1">支持中心人员</label>
+                                <select class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                                    <option>全部</option>
+                                    <option>李设计</option>
+                                    <option>王采购</option>
+                                    <option>王总工</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                            <div>
+                                <label class="block text-xs text-slate-400 mb-1">评价人员</label>
+                                <select class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                                    <option>全部</option>
+                                    <option>张经理</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-400 mb-1">评价项目</label>
+                                <select class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                                    <option>全部</option>
+                                    <option>机场T3航站楼项目</option>
+                                    <option>二期工程项目</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-400 mb-1">评价时间</label>
+                                <div class="flex items-center gap-2">
+                                    <input type="date" id="startDate" class="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                                    <span class="text-slate-400">-</span>
+                                    <input type="date" id="endDate" class="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-400 mb-1">评价状态</label>
+                                <select class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                                    <option>全部</option>
+                                    <option>已评价</option>
+                                    <option>未评价</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="flex flex-wrap gap-3 justify-end">
+                            <button class="px-3 py-1.5 bg-slate-200 text-slate-700 text-xs rounded-md hover:bg-slate-300 flex items-center gap-1">
+                                <i data-lucide="refresh-cw" class="w-3 h-3"></i> 重置
+                            </button>
+                            <button class="px-3 py-1.5 bg-indigo-600 text-white text-xs rounded-md hover:bg-indigo-700 flex items-center gap-1">
+                                <i data-lucide="search" class="w-3 h-3"></i> 筛选
+                            </button>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-slate-50 text-slate-500 font-medium">
+                                <tr>
+                                    <th class="px-6 py-4">关联任务</th>
+                                    <th class="px-6 py-4">支持中心</th>
+                                    <th class="px-6 py-4">支持人员</th>
+                                    <th class="px-6 py-4">评价时间</th>
+                                    <th class="px-6 py-4">评价人</th>
+                                    <th class="px-6 py-4">评价项目</th>
+                                    <th class="px-6 py-4 hidden">服务质量</th>
+                                    <th class="px-6 py-4 hidden">能力输出</th>
+                                    <th class="px-6 py-4 hidden">工作效率</th>
+                                    <th class="px-6 py-4 hidden">服务态度</th>
+                                    <th class="px-6 py-4">评价状态</th>
+                                    <th class="px-6 py-4">综合评分</th>
+                                    <th class="px-6 py-4">改进建议</th>
+                                    <th class="px-6 py-4 text-right">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <tr>
+                                    <td class="px-6 py-4 font-medium">机场T3航站楼图纸深化</td>
+                                    <td class="px-6 py-4"><span class="px-2 py-1 bg-blue-50 text-blue-600 rounded text-xs">设计中心</span></td>
+                                    <td class="px-6 py-4">李设计</td>
+                                    <td class="px-6 py-4">2026/01/15</td>
+                                    <td class="px-6 py-4">张经理</td>
+                                    <td class="px-6 py-4">机场T3航站楼项目</td>
+                                    <td class="px-6 py-4 hidden">5.0</td>
+                                    <td class="px-6 py-4 hidden">4.5</td>
+                                    <td class="px-6 py-4 hidden">4.5</td>
+                                    <td class="px-6 py-4 hidden">5.0</td>
+                                    <td class="px-6 py-4"><span class="px-2 py-1 bg-green-50 text-green-600 rounded text-xs">已评价</span></td>
+                                    <td class="px-6 py-4 font-bold text-indigo-600">4.8</td>
+                                    <td class="px-6 py-4 text-slate-500 truncate max-w-xs">配合度很高，图纸质量优秀。</td>
+                                    <td class="px-6 py-4 text-right">
+                                            <button class="text-indigo-600 hover:underline mr-3" onclick="openEvaluationDetail('机场T3航站楼图纸深化', '设计中心', '李设计', '2026/01/15', '张经理', '机场T3航站楼项目', '5.0', '4.5', '4.5', '5.0', '4.8', '配合度很高，图纸质量优秀。')">查看详情</button>
+                                        </td>
+                                </tr>
+                                <tr>
+                                    <td class="px-6 py-4 font-medium">二期工程钢材集采</td>
+                                    <td class="px-6 py-4"><span class="px-2 py-1 bg-cyan-50 text-cyan-600 rounded text-xs">供应链中心</span></td>
+                                    <td class="px-6 py-4">王采购</td>
+                                    <td class="px-6 py-4">2026/01/14</td>
+                                    <td class="px-6 py-4">张经理</td>
+                                    <td class="px-6 py-4">二期工程项目</td>
+                                    <td class="px-6 py-4 hidden">2.0</td>
+                                    <td class="px-6 py-4 hidden">2.0</td>
+                                    <td class="px-6 py-4 hidden">1.0</td>
+                                    <td class="px-6 py-4 hidden">3.0</td>
+                                    <td class="px-6 py-4"><span class="px-2 py-1 bg-green-50 text-green-600 rounded text-xs">已评价</span></td>
+                                    <td class="px-6 py-4 font-bold text-orange-500">2.0</td>
+                                    <td class="px-6 py-4 text-slate-500 truncate max-w-xs">询价反馈太慢。</td>
+                                    <td class="px-6 py-4 text-right">
+                                            <button class="text-indigo-600 hover:underline mr-3" onclick="openEvaluationDetail('二期工程钢材集采', '供应链中心', '王采购', '2026/01/14', '张经理', '二期工程项目', '2.0', '2.0', '1.0', '3.0', '2.0', '询价反馈太慢。')">查看详情</button>
+                                        </td>
+                                </tr>
+                                <tr>
+                                    <td class="px-6 py-4 font-medium">技术方案审核</td>
+                                    <td class="px-6 py-4"><span class="px-2 py-1 bg-purple-50 text-purple-600 rounded text-xs">技术中心</span></td>
+                                    <td class="px-6 py-4">王总工</td>
+                                    <td class="px-6 py-4">2026/01/13</td>
+                                    <td class="px-6 py-4">张经理</td>
+                                    <td class="px-6 py-4">机场T3航站楼项目</td>
+                                    <td class="px-6 py-4 hidden">4.5</td>
+                                    <td class="px-6 py-4 hidden">5.0</td>
+                                    <td class="px-6 py-4 hidden">4.0</td>
+                                    <td class="px-6 py-4 hidden">4.5</td>
+                                    <td class="px-6 py-4"><span class="px-2 py-1 bg-yellow-50 text-yellow-600 rounded text-xs">未评价</span></td>
+                                    <td class="px-6 py-4 font-bold text-indigo-600 ">4.5</td>
+                                    <td class="px-6 py-4 text-slate-500 truncate max-w-xs"> 技术方案审核专业度高，建议加快审核速度。</td>
+                                    <td class="px-6 py-4 text-right pl-4">
+                                        <button class="text-indigo-600 hover:underline mr-3" onclick="openEvaluationDetail('技术方案审核', '技术中心', '王总工', '2026/01/13', '张经理', '机场T3航站楼项目', '4.5', '5.0', '4.0', '4.5', '4.5', '技术方案审核专业度高，建议加快审核速度。')">查看详情</button>
+                                        <button class="px-2 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700" onclick="openEvaluationForm('技术方案审核', '技术中心', '王总工', '机场T3航站楼项目')">评价</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <!-- 评价单页面 -->
+            <div id="evaluationForm" class="page-section max-w-[1600px] mx-auto space-y-6 hidden">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div class="p-6 border-b border-slate-100">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-2xl font-bold text-slate-800">服务评价</h2>
+                            <div class="flex gap-3">
+                                <button onclick="backToEvaluationList()" class="px-3 py-1.5 bg-slate-200 text-slate-700 text-xs rounded-md hover:bg-slate-300 flex items-center gap-1">
+                                    <i data-lucide="arrow-left" class="w-4 h-4"></i> 返回列表
+                                </button>
+                                <button onclick="saveDraft()" class="px-3 py-1.5 bg-slate-200 text-slate-700 text-xs rounded-md hover:bg-slate-300">
+                                    保存
+                                </button>
+                                <button onclick="submitEvaluation()" class="px-3 py-1.5 bg-indigo-600 text-white text-xs rounded-md hover:bg-indigo-700">
+                                    提交
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <!-- 评价表单内容 -->
+                        <div id="evaluationFormContent">
+                            <!-- 任务信息 -->
+                            <div class="bg-slate-50 rounded-xl p-4 mb-6">
+                                <h4 class="font-medium text-slate-700 mb-3">任务信息</h4>
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    <div>
+                                        <label class="block text-xs text-slate-400 mb-1">任务名称</label>
+                                        <div id="taskName" class="text-sm font-medium text-slate-800">技术方案审核</div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs text-slate-400 mb-1">内容描述</label>
+                                        <div id="taskDescription" class="text-sm text-slate-800">对技术方案进行专业审核，确保方案可行性和合规性</div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs text-slate-400 mb-1">任务时限</label>
+                                        <div id="taskDeadline" class="text-sm text-slate-800">3天</div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs text-slate-400 mb-1">开始时间</label>
+                                        <div id="startTime" class="text-sm text-slate-800">2026/01/13</div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs text-slate-400 mb-1">完成时间</label>
+                                        <div id="endTime" class="text-sm text-slate-800">2026/01/16</div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs text-slate-400 mb-1">支持中心</label>
+                                        <div id="supportCenter" class="text-sm font-medium text-slate-800">技术中心</div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs text-slate-400 mb-1">支持中心人员</label>
+                                        <div id="supportPerson" class="text-sm font-medium text-slate-800">王总工</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 评价信息 -->
+                            <div class="mb-6">
+                                <h4 class="font-medium text-slate-700 mb-3">评价信息</h4>
+                                
+                                <!-- 评分项 -->
+                                <div class="space-y-4 mb-6">
+                                    <div>
+                                        <label class="block text-sm text-slate-600 mb-2">服务质量</label>
+                                        <div class="flex items-center gap-4">
+                                            <input type="range" min="0" max="100" value="80" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer" id="qualityScore" oninput="updateScoreDisplay('qualityScore', 'qualityScoreDisplay', 'qualitySatisfaction')">
+                                            <span id="qualityScoreDisplay" class="text-lg font-bold text-indigo-600 w-12 text-center">80</span>
+                                        </div>
+                                        <div class="flex justify-between items-center text-xs mt-1">
+                                            <span class="text-slate-400">0</span>
+                                            <span id="qualitySatisfaction" class="text-slate-600 font-medium">一般</span>
+                                            <span class="text-slate-400">100</span>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-sm text-slate-600 mb-2">能力输出</label>
+                                        <div class="flex items-center gap-4">
+                                            <input type="range" min="0" max="100" value="85" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer" id="abilityScore" oninput="updateScoreDisplay('abilityScore', 'abilityScoreDisplay', 'abilitySatisfaction')">
+                                            <span id="abilityScoreDisplay" class="text-lg font-bold text-indigo-600 w-12 text-center">85</span>
+                                        </div>
+                                        <div class="flex justify-between items-center text-xs mt-1">
+                                            <span class="text-slate-400">0</span>
+                                            <span id="abilitySatisfaction" class="text-slate-600 font-medium">一般</span>
+                                            <span class="text-slate-400">100</span>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-sm text-slate-600 mb-2">工作效率</label>
+                                        <div class="flex items-center gap-4">
+                                            <input type="range" min="0" max="100" value="75" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer" id="efficiencyScore" oninput="updateScoreDisplay('efficiencyScore', 'efficiencyScoreDisplay', 'efficiencySatisfaction')">
+                                            <span id="efficiencyScoreDisplay" class="text-lg font-bold text-indigo-600 w-12 text-center">75</span>
+                                        </div>
+                                        <div class="flex justify-between items-center text-xs mt-1">
+                                            <span class="text-slate-400">0</span>
+                                            <span id="efficiencySatisfaction" class="text-slate-600 font-medium">合格</span>
+                                            <span class="text-slate-400">100</span>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-sm text-slate-600 mb-2">服务态度</label>
+                                        <div class="flex items-center gap-4">
+                                            <input type="range" min="0" max="100" value="90" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer" id="attitudeScore" oninput="updateScoreDisplay('attitudeScore', 'attitudeScoreDisplay', 'attitudeSatisfaction')">
+                                            <span id="attitudeScoreDisplay" class="text-lg font-bold text-indigo-600 w-12 text-center">90</span>
+                                        </div>
+                                        <div class="flex justify-between items-center text-xs mt-1">
+                                            <span class="text-slate-400">0</span>
+                                            <span id="attitudeSatisfaction" class="text-slate-600 font-medium">满意</span>
+                                            <span class="text-slate-400">100</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 改进建议 -->
+                                <div class="mb-6">
+                                    <label class="block text-sm text-slate-600 mb-2">改进建议</label>
+                                    <textarea id="improvementSuggestion" placeholder="请输入改进建议..." rows="4" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100"></textarea>
+                                </div>
+
+                                <!-- 评价信息 -->
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div>
+                                        <label class="block text-xs text-slate-400 mb-1">评价人</label>
+                                        <div class="text-sm font-medium text-slate-800">张经理</div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs text-slate-400 mb-1">评价项目</label>
+                                        <div id="evaluationProject" class="text-sm font-medium text-slate-800">机场T3航站楼项目</div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs text-slate-400 mb-1">评价时间</label>
+                                        <div id="evaluationTime" class="text-sm font-medium text-slate-800">2026/01/21</div>
+                                    </div>
+                                    <div class="md:col-span-3">
+                                        <label class="block text-xs text-slate-400 mb-1">评价人联系方式 <span class="text-red-500">*</span></label>
+                                        <input type="text" id="contactInfo" placeholder="请输入手机号或邮箱" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                                        <div id="contactError" class="text-xs text-red-500 mt-1 hidden">请输入有效的手机号或邮箱</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 评价单详情页面 -->
+            <div id="evaluationDetail" class="page-section max-w-[1600px] mx-auto space-y-6 hidden">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div class="p-6 border-b border-slate-100">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-2xl font-bold text-slate-800">评价详情</h2>
+                            <div class="flex gap-3">
+                                <button onclick="backToEvaluationList()" class="px-3 py-1.5 bg-slate-200 text-slate-700 text-xs rounded-md hover:bg-slate-300 flex items-center gap-1">
+                                    <i data-lucide="arrow-left" class="w-4 h-4"></i> 返回列表
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <!-- 任务信息 -->
+                        <div class="bg-slate-50 rounded-xl p-4 mb-6">
+                            <h4 class="font-medium text-slate-700 mb-3">任务信息</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-xs text-slate-400 mb-1">任务名称</label>
+                                    <div id="detailTaskName" class="text-sm font-medium text-slate-800 bg-slate-100 p-2 rounded-lg">技术方案审核</div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-400 mb-1">内容描述</label>
+                                    <div id="detailTaskDescription" class="text-sm text-slate-800 bg-slate-100 p-2 rounded-lg">对技术方案进行专业审核，确保方案可行性和合规性</div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-400 mb-1">任务时限</label>
+                                    <div id="detailTaskDeadline" class="text-sm text-slate-800 bg-slate-100 p-2 rounded-lg">3天</div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-400 mb-1">开始时间</label>
+                                    <div id="detailStartTime" class="text-sm text-slate-800 bg-slate-100 p-2 rounded-lg">2026/01/13</div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-400 mb-1">完成时间</label>
+                                    <div id="detailEndTime" class="text-sm text-slate-800 bg-slate-100 p-2 rounded-lg">2026/01/16</div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-400 mb-1">支持中心</label>
+                                    <div id="detailSupportCenter" class="text-sm font-medium text-slate-800 bg-slate-100 p-2 rounded-lg">技术中心</div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-400 mb-1">支持中心人员</label>
+                                    <div id="detailSupportPerson" class="text-sm font-medium text-slate-800 bg-slate-100 p-2 rounded-lg">王总工</div>
+                                </div>
+                        <div class="mb-6">
+                            <h4 class="font-medium text-slate-700 mb-3">评价信息</h4>
+                            
+                            <!-- 评分项 -->
+                            <div class="space-y-4 mb-6">
+                                <div>
+                                    <label class="block text-sm text-slate-600 mb-2">服务质量</label>
+                                    <div class="flex items-center gap-4">
+                                        <div class="w-full h-2 bg-slate-200 rounded-lg overflow-hidden">
+                                            <div id="detailQualityScoreBar" class="h-full bg-indigo-600 rounded-lg" style="width: 80%"></div>
+                                        </div>
+                                        <span id="detailQualityScoreDisplay" class="text-lg font-bold text-indigo-600 w-12 text-center">80</span>
+                                    </div>
+                                    <div class="flex justify-between items-center text-xs mt-1">
+                                        <span class="text-slate-400">0</span>
+                                        <span id="detailQualitySatisfaction" class="text-slate-600 font-medium">一般</span>
+                                        <span class="text-slate-400">100</span>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm text-slate-600 mb-2">能力输出</label>
+                                    <div class="flex items-center gap-4">
+                                        <div class="w-full h-2 bg-slate-200 rounded-lg overflow-hidden">
+                                            <div id="detailAbilityScoreBar" class="h-full bg-indigo-600 rounded-lg" style="width: 85%"></div>
+                                        </div>
+                                        <span id="detailAbilityScoreDisplay" class="text-lg font-bold text-indigo-600 w-12 text-center">85</span>
+                                    </div>
+                                    <div class="flex justify-between items-center text-xs mt-1">
+                                        <span class="text-slate-400">0</span>
+                                        <span id="detailAbilitySatisfaction" class="text-slate-600 font-medium">一般</span>
+                                        <span class="text-slate-400">100</span>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm text-slate-600 mb-2">工作效率</label>
+                                    <div class="flex items-center gap-4">
+                                        <div class="w-full h-2 bg-slate-200 rounded-lg overflow-hidden">
+                                            <div id="detailEfficiencyScoreBar" class="h-full bg-indigo-600 rounded-lg" style="width: 75%"></div>
+                                        </div>
+                                        <span id="detailEfficiencyScoreDisplay" class="text-lg font-bold text-indigo-600 w-12 text-center">75</span>
+                                    </div>
+                                    <div class="flex justify-between items-center text-xs mt-1">
+                                        <span class="text-slate-400">0</span>
+                                        <span id="detailEfficiencySatisfaction" class="text-slate-600 font-medium">合格</span>
+                                        <span class="text-slate-400">100</span>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm text-slate-600 mb-2">服务态度</label>
+                                    <div class="flex items-center gap-4">
+                                        <div class="w-full h-2 bg-slate-200 rounded-lg overflow-hidden">
+                                            <div id="detailAttitudeScoreBar" class="h-full bg-indigo-600 rounded-lg" style="width: 90%"></div>
+                                        </div>
+                                        <span id="detailAttitudeScoreDisplay" class="text-lg font-bold text-indigo-600 w-12 text-center">90</span>
+                                    </div>
+                                    <div class="flex justify-between items-center text-xs mt-1">
+                                        <span class="text-slate-400">0</span>
+                                        <span id="detailAttitudeSatisfaction" class="text-slate-600 font-medium">满意</span>
+                                        <span class="text-slate-400">100</span>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm text-slate-600 mb-2">综合评分</label>
+                                    <div class="flex items-center gap-4">
+                                        <div class="w-full h-2 bg-slate-200 rounded-lg overflow-hidden">
+                                            <div id="detailTotalScoreBar" class="h-full bg-indigo-600 rounded-lg" style="width: 82.5%"></div>
+                                        </div>
+                                        <span id="detailTotalScoreDisplay" class="text-lg font-bold text-indigo-600 w-12 text-center">82.5</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 改进建议 -->
+                            <div class="mb-6">
+                                <label class="block text-sm text-slate-600 mb-2">改进建议</label>
+                                <div id="detailImprovementSuggestion" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-slate-100 min-h-[120px]">技术方案审核专业度高，建议加快审核速度。</div>
+                            </div>
+
+                            <!-- 评价信息 -->
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                                <div>
+                                    <label class="block text-xs text-slate-400 mb-1">评价人</label>
+                                    <div id="detailEvaluator" class="text-sm font-medium text-slate-800 bg-slate-100 p-2 rounded-lg">张经理</div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-400 mb-1">评价项目</label>
+                                    <div id="detailEvaluationProject" class="text-sm font-medium text-slate-800 bg-slate-100 p-2 rounded-lg">机场T3航站楼项目</div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-400 mb-1">评价时间</label>
+                                    <div id="detailEvaluationTime" class="text-sm font-medium text-slate-800 bg-slate-100 p-2 rounded-lg">2026/01/21</div>
+                                </div>
+                                <div class="md:col-span-3">
+                                    <label class="block text-xs text-slate-400 mb-1">评价人联系方式</label>
+                                    <div id="detailContactInfo" class="text-sm font-medium text-slate-800 bg-slate-100 p-2 rounded-lg">13800138000</div>
+                                </div>
+                            </div>
+
+                            <!-- 审批记录 -->
+                            <div class="mb-6">
+                                <h4 class="font-medium text-slate-700 mb-3">审批记录</h4>
+                                <div class="space-y-4">
+                                    <!-- 发起人信息 -->
+                                    <div class="border-l-4 border-blue-400 pl-4 py-2">
+                                        <div class="flex justify-between items-center mb-1">
+                                            <span class="font-medium text-slate-800">张经理</span>
+                                            <span class="text-xs text-slate-400">2026/01/21 10:00</span>
+                                        </div>
+                                        <div class="text-sm text-slate-600 mb-1">发起人</div>
+                                        <div class="text-sm text-slate-500">提交服务评价申请</div>
+                                    </div>
+
+                                    <!-- 项目经理审批 -->
+                                    <div class="border-l-4 border-green-400 pl-4 py-2">
+                                        <div class="flex justify-between items-center mb-1">
+                                            <span class="font-medium text-slate-800">李总</span>
+                                            <span class="text-xs text-slate-400">2026/01/21 14:30</span>
+                                        </div>
+                                        <div class="text-sm text-slate-600 mb-1">项目经理</div>
+                                        <div class="text-sm text-slate-500">审批通过</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+                            </div>
+                        </div>
+
+                        
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <script>
+        // 初始化 Lucide 图标
+        lucide.createIcons();
+
+        // 页面加载完成后检查是否有任务评价数据
+        document.addEventListener('DOMContentLoaded', function() {
+            loadTaskEvaluationData();
+        });
+
+        // 加载任务评价数据
+        function loadTaskEvaluationData() {
+            const params = new URLSearchParams(window.location.search);
+            const taskId = params.get('taskId');
+            
+            if (taskId) {
+                // 有任务评价数据，自动切换到评价表单页面
+                const taskName = params.get('taskName') || '';
+                const status = params.get('status') || '';
+                const assignee = params.get('assignee') || '';
+                const deadline = params.get('deadline') || '';
+                const duration = params.get('duration') || '';
+                const progress = params.get('progress') || '';
+                const supportCenter = params.get('supportCenter') || '';
+                
+                // 切换到评价表单页面
+                switchPage('evaluationForm');
+                
+                // 填充评价表单数据
+                document.getElementById('taskName').textContent = taskName;
+                document.getElementById('taskDeadline').textContent = duration;
+                document.getElementById('startTime').textContent = new Date().toISOString().split('T')[0].replace(/-/g, '/');
+                document.getElementById('endTime').textContent = deadline;
+                document.getElementById('supportCenter').textContent = supportCenter;
+                document.getElementById('supportPerson').textContent = assignee;
+                document.getElementById('evaluationProject').textContent = taskName.includes('机场') ? '机场T3航站楼项目' : '二期工程项目';
+                
+                // 自动聚焦到第一个评分输入字段
+                setTimeout(() => {
+                    const firstScoreInput = document.getElementById('qualityScore');
+                    if (firstScoreInput) {
+                        firstScoreInput.focus();
+                    }
+                }, 100);
+            }
+        }
+
+        // 页面导航函数
+        function switchPage(pageId) {
+            // 隐藏所有页面
+            document.querySelectorAll('.page-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            // 显示目标页面
+            const targetPage = document.getElementById(pageId);
+            if (targetPage) {
+                targetPage.classList.add('active');
+            }
+        }
+
+        // 路由配置对象
+        const routes = {
+            '/': {
+                name: 'dashboard',
+                title: '驾驶舱',
+                path: 'dashboard.html'
+            },
+            '/dashboard': {
+                name: 'dashboard',
+                title: '驾驶舱',
+                path: 'dashboard.html'
+            },
+            '/tasks': {
+                name: 'tasks',
+                title: '任务大厅',
+                path: 'tasks.html'
+            },
+            '/decision': {
+                name: 'decision',
+                title: '决策中心',
+                path: 'dashboard.html'
+            },
+            '/evaluation/dashboard': {
+                name: 'evaluation-dashboard',
+                title: '服务评价看板',
+                path: 'evaluation.html'
+            },
+            '/evaluation/quarterly': {
+                name: 'evaluation-quarterly',
+                title: '季度项目服务评价',
+                path: 'project-evaluation.html'
+            },
+            '/evaluation/monthly': {
+                name: 'evaluation-monthly',
+                title: '月度部门中心评价',
+                path: 'department-evaluation.html'
+            },
+            '/evaluation/leader': {
+                name: 'evaluation-leader',
+                title: '领导评价',
+                path: 'leadership-evaluation.html'
+            },
+            '/risk': {
+                name: 'risk',
+                title: '风险预控',
+                path: 'risk.html'
+            },
+            '/risk/disposal': {
+                name: 'risk-disposal',
+                title: '风险处置',
+                path: 'risk-management.html'
+            },
+            '/risk/issues': {
+                name: 'risk-issues',
+                title: '项目履约问题清单',
+                path: 'performance_issues.html'
+            },
+            '/performance/dashboard': {
+                name: 'performance-dashboard',
+                title: '目标绩效看板',
+                path: 'performance-dashboard.html'
+            },
+            '/performance/contract': {
+                name: 'performance-contract',
+                title: '目标责任书',
+                path: 'annual-performance.html'
+            },
+            '/performance/annual': {
+                name: 'performance-annual',
+                title: '年度绩效考核',
+                path: 'annual-performance.html'
+            },
+            '/performance/details': {
+                name: 'performance-details',
+                title: '履职达成明细',
+                path: 'value-effectiveness.html'
+            },
+            '/settings': {
+                name: 'settings',
+                title: '系统设置',
+                path: 'settings.html'
+            },
+            '/settings/tags': {
+                name: 'settings-tags',
+                title: '中心价值点配置',
+                path: 'settings-tags.html'
+            },
+            '/settings/indicators': {
+                name: 'settings-indicators',
+                title: '目标指标库设置',
+                path: 'settings-tags.html'
+            },
+            '/settings/projects': {
+                name: 'settings-projects',
+                title: '服务项目设置',
+                path: 'settings-projects.html'
+            },
+            '/settings/scheduling': {
+                name: 'settings-scheduling',
+                title: '任务自动调度设置',
+                path: 'settings-scheduling.html'
+            },
+            '/profile': {
+                name: 'profile',
+                title: '个人中心',
+                path: 'profile.html'
+            },
+            '/notifications': {
+                name: 'notifications',
+                title: '通知中心',
+                path: 'notifications.html'
+            },
+            '/resolutions': {
+                name: 'resolutions',
+                title: '议题清单',
+                path: 'resolutions.html'
+            },
+            '/decision-meeting': {
+                name: 'decision-meeting',
+                title: '决策会议',
+                path: 'decision-meeting.html'
+            },
+            '/monthly-plan': {
+                name: 'monthly-plan',
+                title: '月度工作计划',
+                path: 'monthly-plan.html'
+            }
+        };
+
+        // 导航函数
+        function navigateTo(page) {
+            if (page.startsWith('http')) {
+                window.open(page, '_blank');
+            } else {
+                // 构建路径
+                let path = page;
+                if (!path.startsWith('/')) {
+                    if (path === 'index.html') {
+                        path = '/';
+                    } else if (path.includes('.html')) {
+                        path = '/' + path.replace('.html', '');
+                    } else {
+                        path = '/' + path;
+                    }
+                }
+                
+                // 查找路由配置
+                const route = routes[path] || routes['/'];
+                if (route && route.path) {
+                    // 直接跳转到对应的HTML文件
+                    window.location.href = route.path;
+                } else {
+                    // 默认导航
+                    window.location.href = page;
+                }
+            }
+        }
+
+        // 组织菜单切换
+        function toggleOrgMenu() {
+            const orgMenu = document.getElementById('orgMenu');
+            orgMenu.classList.toggle('hidden');
+        }
+
+        // 切换组织
+        function changeOrg(orgName) {
+            document.getElementById('currentOrg').textContent = orgName;
+            toggleOrgMenu();
+        }
+
+        // 二级目录展开/收起功能
+        function initSubmenuToggle() {
+            const navItems = document.querySelectorAll('.nav-item');
+            navItems.forEach(item => {
+                const parent = item.parentElement;
+                const submenu = parent.querySelector('.pl-8');
+                if (submenu) {
+                    item.addEventListener('click', function(e) {
+                        // 阻止事件冒泡，避免触发其他点击事件
+                        e.stopPropagation();
+                        
+                        // 切换二级目录显示/隐藏
+                        if (submenu.style.display === 'none') {
+                            submenu.style.display = 'block';
+                            // 旋转箭头图标
+                            const arrow = this.querySelector('[data-lucide="chevron-down"]');
+                            if (arrow) {
+                                arrow.style.transform = 'rotate(180deg)';
+                            }
+                        } else {
+                            submenu.style.display = 'none';
+                            // 恢复箭头图标
+                            const arrow = this.querySelector('[data-lucide="chevron-down"]');
+                            if (arrow) {
+                                arrow.style.transform = 'rotate(0deg)';
+                            }
+                        }
+                    });
+                    
+                    // 默认收起二级目录
+                    submenu.style.display = 'block';
+                }
+            });
+        }
+
+        // 返回上级页面函数
+        function goBack() {
+            window.history.back();
+        }
+
+        // 切换中心视图
+        function switchCenterView(centerName, element) {
+            // 移除所有活动状态
+            document.querySelectorAll('.center-nav').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            // 添加活动状态到当前元素
+            if (element) {
+                element.classList.add('active');
+            }
+            
+            // 更新中心徽章
+            const centerBadge = document.getElementById('centerBadge');
+            if (centerBadge) {
+                centerBadge.textContent = centerName;
+                
+                // 根据中心设置不同颜色
+                const colorMap = {
+                    '总包中心': 'bg-blue-100 text-blue-700',
+                    '设计中心': 'bg-purple-100 text-purple-700',
+                    '技术中心': 'bg-emerald-100 text-emerald-700',
+                    '商务中心': 'bg-orange-100 text-orange-700',
+                    '供应链中心': 'bg-cyan-100 text-cyan-700'
+                };
+                
+                // 移除所有颜色类
+                centerBadge.className = 'px-2 py-0.5 text-xs rounded-full font-bold';
+                
+                // 添加对应颜色类
+                if (colorMap[centerName]) {
+                    centerBadge.classList.add(...colorMap[centerName].split(' '));
+                }
+            }
+        }
+
+        // 初始化雷达图
+        function initRadarChart() {
+            const radarChartCtx = document.getElementById('radarChart');
+            if (radarChartCtx) {
+                new Chart(radarChartCtx, {
+                    type: 'radar',
+                    data: {
+                        labels: ['服务质量', '能力输出', '工作效率', '服务态度', '专业度'],
+                        datasets: [{
+                            label: '服务能力评分',
+                            data: [4.8, 4.5, 4.2, 4.7, 4.6],
+                            backgroundColor: 'rgba(79, 70, 229, 0.2)',
+                            borderColor: 'rgba(79, 70, 229, 1)',
+                            borderWidth: 2,
+                            pointBackgroundColor: 'rgba(79, 70, 229, 1)',
+                            pointBorderColor: '#fff',
+                            pointHoverBackgroundColor: '#fff',
+                            pointHoverBorderColor: 'rgba(79, 70, 229, 1)'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            r: {
+                                beginAtZero: true,
+                                max: 5,
+                                ticks: {
+                                    stepSize: 1
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        // 页面加载完成后初始化图表和设置默认时间
+        window.addEventListener('DOMContentLoaded', function() {
+            initRadarChart();
+            setDefaultDateRange();
+        });
+        
+        // 设置默认日期范围为前90天
+        function setDefaultDateRange() {
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setDate(startDate.getDate() - 90);
+            
+            const startDateInput = document.getElementById('startDate');
+            const endDateInput = document.getElementById('endDate');
+            
+            if (startDateInput && endDateInput) {
+                startDateInput.valueAsDate = startDate;
+                endDateInput.valueAsDate = endDate;
+            }
+        }
+
+        // 打开评价表单
+        function openEvaluationForm(taskName, supportCenter, supportPerson, projectName) {
+            // 隐藏评价列表，显示评价表单
+            document.getElementById('evaluation').classList.add('hidden');
+            document.getElementById('evaluation').classList.remove('active');
+            document.getElementById('evaluationForm').classList.remove('hidden');
+            document.getElementById('evaluationForm').classList.add('active');
+            
+            // 填充任务信息
+            document.getElementById('taskName').textContent = taskName;
+            document.getElementById('supportCenter').textContent = supportCenter;
+            document.getElementById('supportPerson').textContent = supportPerson;
+            document.getElementById('evaluationProject').textContent = projectName;
+            
+            // 设置默认任务描述和时间信息
+            document.getElementById('taskDescription').textContent = '对技术方案进行专业审核，确保方案可行性和合规性';
+            document.getElementById('taskDeadline').textContent = '3天';
+            document.getElementById('startTime').textContent = '2026/01/13';
+            document.getElementById('endTime').textContent = '2026/01/16';
+            
+            // 设置当前日期为评价时间
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('evaluationTime').textContent = today.replace(/-/g, '/');
+        }
+
+        // 返回评价列表
+        function backToEvaluationList() {
+            // 隐藏所有页面
+            document.getElementById('evaluationForm').classList.add('hidden');
+            document.getElementById('evaluationForm').classList.remove('active');
+            document.getElementById('evaluationDetail').classList.add('hidden');
+            document.getElementById('evaluationDetail').classList.remove('active');
+            // 显示评价列表
+            document.getElementById('evaluation').classList.remove('hidden');
+            document.getElementById('evaluation').classList.add('active');
+        }
+
+        // 打开评价详情
+        function openEvaluationDetail(taskName, supportCenter, supportPerson, evaluationTime, evaluator, projectName, qualityScore, abilityScore, efficiencyScore, attitudeScore, totalScore, improvementSuggestion) {
+            // 隐藏评价列表，显示评价详情
+            document.getElementById('evaluation').classList.add('hidden');
+            document.getElementById('evaluation').classList.remove('active');
+            document.getElementById('evaluationDetail').classList.remove('hidden');
+            document.getElementById('evaluationDetail').classList.add('active');
+            
+            // 填充任务信息
+            document.getElementById('detailTaskName').textContent = taskName;
+            document.getElementById('detailTaskDescription').textContent = '对技术方案进行专业审核，确保方案可行性和合规性';
+            document.getElementById('detailTaskDeadline').textContent = '3天';
+            document.getElementById('detailStartTime').textContent = '2026/01/13';
+            document.getElementById('detailEndTime').textContent = '2026/01/16';
+            document.getElementById('detailSupportCenter').textContent = supportCenter;
+            document.getElementById('detailSupportPerson').textContent = supportPerson;
+            
+            // 填充评价信息
+            const qualityScoreNum = parseFloat(qualityScore);
+            const abilityScoreNum = parseFloat(abilityScore);
+            const efficiencyScoreNum = parseFloat(efficiencyScore);
+            const attitudeScoreNum = parseFloat(attitudeScore);
+            
+            // 服务质量
+            document.getElementById('detailQualityScoreDisplay').textContent = qualityScoreNum * 20;
+            document.getElementById('detailQualityScoreBar').style.width = (qualityScoreNum * 20) + '%';
+            document.getElementById('detailQualitySatisfaction').textContent = getSatisfactionLevel(qualityScoreNum * 20);
+            
+            // 能力输出
+            document.getElementById('detailAbilityScoreDisplay').textContent = abilityScoreNum * 20;
+            document.getElementById('detailAbilityScoreBar').style.width = (abilityScoreNum * 20) + '%';
+            document.getElementById('detailAbilitySatisfaction').textContent = getSatisfactionLevel(abilityScoreNum * 20);
+            
+            // 工作效率
+            document.getElementById('detailEfficiencyScoreDisplay').textContent = efficiencyScoreNum * 20;
+            document.getElementById('detailEfficiencyScoreBar').style.width = (efficiencyScoreNum * 20) + '%';
+            document.getElementById('detailEfficiencySatisfaction').textContent = getSatisfactionLevel(efficiencyScoreNum * 20);
+            
+            // 服务态度
+            document.getElementById('detailAttitudeScoreDisplay').textContent = attitudeScoreNum * 20;
+            document.getElementById('detailAttitudeScoreBar').style.width = (attitudeScoreNum * 20) + '%';
+            document.getElementById('detailAttitudeSatisfaction').textContent = getSatisfactionLevel(attitudeScoreNum * 20);
+            
+            // 综合评分
+            const totalScoreNum = parseFloat(totalScore);
+            document.getElementById('detailTotalScoreDisplay').textContent = totalScoreNum * 20;
+            document.getElementById('detailTotalScoreBar').style.width = (totalScoreNum * 20) + '%';
+            
+            // 改进建议和其他信息
+            document.getElementById('detailImprovementSuggestion').textContent = improvementSuggestion;
+            document.getElementById('detailEvaluator').textContent = evaluator;
+            document.getElementById('detailEvaluationProject').textContent = projectName;
+            document.getElementById('detailEvaluationTime').textContent = evaluationTime;
+            document.getElementById('detailContactInfo').textContent = '13800138000';
+        }
+
+        // 获取满意度等级
+        function getSatisfactionLevel(score) {
+            if (score == 100) {
+                return '非常满意';
+            } else if (score >= 90) {
+                return '满意';
+            } else if (score >= 80) {
+                return '一般';
+            } else if (score >= 70) {
+                return '合格';
+            } else {
+                return '不满意';
+            }
+        }
+
+        // 按状态筛选评价
+        function filterByStatus(status) {
+            // 重置卡片样式
+            document.getElementById('pendingEvaluationCard').classList.remove('ring-2', 'ring-blue-500');
+            document.getElementById('urgentEvaluationCard').classList.remove('ring-2', 'ring-red-500');
+            
+            // 添加选中状态
+            if (status === 'pending') {
+                document.getElementById('pendingEvaluationCard').classList.add('ring-2', 'ring-blue-500');
+            } else if (status === 'urgent') {
+                document.getElementById('urgentEvaluationCard').classList.add('ring-2', 'ring-red-500');
+            }
+            
+            // 模拟筛选功能
+            alert(`已筛选${status === 'pending' ? '待评价' : '催办'}的评价任务`);
+        }
+
+        // 更新评分显示
+        function updateScoreDisplay(scoreId, displayId, satisfactionId) {
+            const score = document.getElementById(scoreId).value;
+            document.getElementById(displayId).textContent = score;
+            
+            // 计算满意度等级
+            let satisfaction = '';
+            if (score == 100) {
+                satisfaction = '非常满意';
+            } else if (score >= 90) {
+                satisfaction = '满意';
+            } else if (score >= 80) {
+                satisfaction = '一般';
+            } else if (score >= 70) {
+                satisfaction = '合格';
+            } else {
+                satisfaction = '不满意';
+            }
+            
+            // 更新满意度显示
+            if (satisfactionId) {
+                document.getElementById(satisfactionId).textContent = satisfaction;
+            }
+        }
+
+        // 保存草稿
+        function saveDraft() {
+            alert('评价已保存为草稿');
+        }
+
+        // 验证联系方式
+        function validateContactInfo(contact) {
+            // 手机号验证正则
+            const phoneRegex = /^1[3-9]\d{9}$/;
+            // 邮箱验证正则
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            
+            return phoneRegex.test(contact) || emailRegex.test(contact);
+        }
+
+        // 提交评价
+        function submitEvaluation() {
+            // 获取联系方式
+            const contactInfo = document.getElementById('contactInfo').value;
+            
+            // 验证联系方式
+            if (!contactInfo) {
+                document.getElementById('contactError').textContent = '请输入联系方式';
+                document.getElementById('contactError').classList.remove('hidden');
+                return;
+            }
+            
+            if (!validateContactInfo(contactInfo)) {
+                document.getElementById('contactError').textContent = '请输入有效的手机号或邮箱';
+                document.getElementById('contactError').classList.remove('hidden');
+                return;
+            }
+            
+            // 隐藏错误信息
+            document.getElementById('contactError').classList.add('hidden');
+            
+            // 获取评分
+            const qualityScore = parseInt(document.getElementById('qualityScore').value);
+            const abilityScore = parseInt(document.getElementById('abilityScore').value);
+            const efficiencyScore = parseInt(document.getElementById('efficiencyScore').value);
+            const attitudeScore = parseInt(document.getElementById('attitudeScore').value);
+            
+            // 计算综合评分
+            const totalScore = (qualityScore + abilityScore + efficiencyScore + attitudeScore) / 4;
+            const roundedScore = totalScore.toFixed(1);
+            
+            // 获取改进建议
+            const improvementSuggestion = document.getElementById('improvementSuggestion').value;
+            
+            // 模拟提交
+            alert(`评价提交成功！\n综合评分：${roundedScore}\n改进建议：${improvementSuggestion}`);
+            
+            // 返回评价列表
+            backToEvaluationList();
+        }
+
+        // 从URL参数获取任务信息并填充表单
+        function loadTaskEvaluationData() {
+            // 获取URL参数
+            const urlParams = new URLSearchParams(window.location.search);
+            
+            // 检查是否有任务评价参数
+            if (urlParams.has('taskId')) {
+                // 隐藏评价列表，显示评价表单
+                document.getElementById('evaluation').classList.remove('active');
+                document.getElementById('evaluationForm').classList.add('active');
+                
+                // 获取任务信息
+                const taskId = urlParams.get('taskId');
+                const taskName = urlParams.get('taskName');
+                const status = urlParams.get('status');
+                const assignee = urlParams.get('assignee');
+                const deadline = urlParams.get('deadline');
+                const duration = urlParams.get('duration');
+                const progress = urlParams.get('progress');
+                const supportCenter = urlParams.get('supportCenter');
+                
+                // 填充任务信息
+                if (document.getElementById('taskName')) {
+                    document.getElementById('taskName').textContent = taskName || '技术方案审核';
+                }
+                
+                if (document.getElementById('taskDescription')) {
+                    const description = `任务ID: ${taskId}\n任务状态: ${status}\n任务负责人: ${assignee}\n任务截止时间: ${deadline}\n任务时限: ${duration}\n任务进度: ${progress}\n支持中心: ${supportCenter}`;
+                    document.getElementById('taskDescription').textContent = description;
+                }
+                
+                if (document.getElementById('taskDeadline')) {
+                    document.getElementById('taskDeadline').textContent = duration || '3天';
+                }
+                
+                if (document.getElementById('supportCenter')) {
+                    document.getElementById('supportCenter').textContent = supportCenter || '技术中心';
+                }
+                
+                if (document.getElementById('supportPerson')) {
+                    document.getElementById('supportPerson').textContent = assignee || '王总工';
+                }
+                
+                // 填充评价项目
+                if (document.getElementById('evaluationProject')) {
+                    document.getElementById('evaluationProject').textContent = taskName || '技术方案审核';
+                }
+                
+                // 自动定位焦点到第一个评分字段
+                setTimeout(() => {
+                    const firstScoreInput = document.getElementById('qualityScore');
+                    if (firstScoreInput) {
+                        firstScoreInput.focus();
+                    }
+                }, 100);
+            }
+        }
+
+        // 初始化
+        window.onload = function() {
+            // 初始化 Lucide 图标
+            lucide.createIcons();
+
+            // 初始化二级目录展开/收起功能
+            initSubmenuToggle();
+
+            // 为系统图标添加点击事件监听器
+            const systemLogo = document.getElementById('systemLogo');
+            if (systemLogo) {
+                systemLogo.addEventListener('click', function() {
+                    navigateTo('/');
+                });
+            }
+
+            // 为h1标题添加点击事件监听器
+            const pageTitle = document.getElementById('pageTitle');
+            if (pageTitle) {
+                pageTitle.addEventListener('click', function() {
+                    navigateTo('/');
+                });
+            }
+            
+            // 为卡片添加点击事件监听器，实现选中状态切换和悬浮按钮显示
+            const decisionCard = document.getElementById('decisionCard');
+            const tasksCard = document.getElementById('tasksCard');
+            const floatingButtons = document.getElementById('floatingButtons');
+            const decisionButtons = document.getElementById('decisionButtons');
+            const tasksButtons = document.getElementById('tasksButtons');
+            
+            if (decisionCard) {
+                decisionCard.addEventListener('click', function(e) {
+                    // 阻止事件冒泡，避免触发按钮的navigateTo
+                    e.stopPropagation();
+                    
+                    // 移除其他卡片的选中状态
+                    if (tasksCard) {
+                        tasksCard.classList.remove('selected');
+                    }
+                    // 添加当前卡片的选中状态
+                    this.classList.add('selected');
+                    
+                    // 显示悬浮按钮并切换到决策中心选项
+                    if (floatingButtons) {
+                        floatingButtons.classList.remove('hidden');
+                        decisionButtons.style.display = 'flex';
+                        tasksButtons.style.display = 'none';
+                    }
+                });
+            }
+            
+            if (tasksCard) {
+                tasksCard.addEventListener('click', function(e) {
+                    // 阻止事件冒泡，避免触发按钮的navigateTo
+                    e.stopPropagation();
+                    
+                    // 移除其他卡片的选中状态
+                    if (decisionCard) {
+                        decisionCard.classList.remove('selected');
+                    }
+                    // 添加当前卡片的选中状态
+                    this.classList.add('selected');
+                    
+                    // 显示悬浮按钮并切换到任务大厅选项
+                    if (floatingButtons) {
+                        floatingButtons.classList.remove('hidden');
+                        decisionButtons.style.display = 'none';
+                        tasksButtons.style.display = 'flex';
+                    }
+                });
+            }
+
+            // 为悬浮按钮添加点击事件
+            if (document.getElementById('business-status-btn')) {
+                document.getElementById('business-status-btn').addEventListener('click', function() {
+                    // 保存选中状态
+                    sessionStorage.setItem('activeCard', 'decisionCard');
+                    navigateTo('dashboard.html');
+                });
+            }
+
+            if (document.getElementById('resolutions-btn')) {
+                document.getElementById('resolutions-btn').addEventListener('click', function() {
+                    // 保存选中状态
+                    sessionStorage.setItem('activeCard', 'decisionCard');
+                    navigateTo('resolutions.html');
+                });
+            }
+
+            if (document.getElementById('decision-meeting-btn')) {
+                document.getElementById('decision-meeting-btn').addEventListener('click', function() {
+                    // 保存选中状态
+                    sessionStorage.setItem('activeCard', 'decisionCard');
+                    navigateTo('decision-meeting.html');
+                });
+            }
+
+            if (document.getElementById('service-support-btn')) {
+                document.getElementById('service-support-btn').addEventListener('click', function() {
+                    // 保存选中状态
+                    sessionStorage.setItem('activeCard', 'tasksCard');
+                    navigateTo('tasks');
+                });
+            }
+
+            if (document.getElementById('monthly-plan-btn')) {
+                document.getElementById('monthly-plan-btn').addEventListener('click', function() {
+                    // 保存选中状态
+                    sessionStorage.setItem('activeCard', 'tasksCard');
+                    navigateTo('monthly-plan.html');
+                });
+            }
+
+            if (document.getElementById('quarterly-work-btn')) {
+                document.getElementById('quarterly-work-btn').addEventListener('click', function() {
+                    // 保存选中状态
+                    sessionStorage.setItem('activeCard', 'tasksCard');
+                    navigateTo('monthly-plan.html');
+                });
+            }
+
+            // 页面加载时恢复选中状态
+            function restoreActiveCardState() {
+                const activeCard = sessionStorage.getItem('activeCard');
+                if (activeCard) {
+                    // 移除所有卡片的选中状态
+                    if (decisionCard) {
+                        decisionCard.classList.remove('selected');
+                    }
+                    if (tasksCard) {
+                        tasksCard.classList.remove('selected');
+                    }
+                    
+                    // 添加当前卡片的选中状态
+                    const card = document.getElementById(activeCard);
+                    if (card) {
+                        card.classList.add('selected');
+                    }
+                    
+                    // 显示对应的悬浮按钮
+                    if (floatingButtons) {
+                        floatingButtons.classList.remove('hidden');
+                        if (activeCard === 'decisionCard') {
+                            decisionButtons.style.display = 'flex';
+                            tasksButtons.style.display = 'none';
+                        } else if (activeCard === 'tasksCard') {
+                            decisionButtons.style.display = 'none';
+                            tasksButtons.style.display = 'flex';
+                        }
+                    }
+                }
+            }
+
+            // 初始化时恢复选中状态
+            restoreActiveCardState();
+
+            // 为非决策中心和任务大厅按钮添加点击事件，实现floatingButtons隐藏逻辑
+            function addNonCardButtonListeners() {
+                const nonCardButtons = [
+                    document.getElementById('nav-evaluation'),
+                    document.getElementById('nav-risk'),
+                    document.getElementById('nav-performance'),
+                    document.getElementById('nav-settings')
+                ];
+                
+                nonCardButtons.forEach(button => {
+                    if (button) {
+                        button.addEventListener('click', function(e) {
+                            // 阻止事件冒泡
+                            e.stopPropagation();
+                            
+                            // 隐藏floatingButtons
+                            if (floatingButtons) {
+                                floatingButtons.classList.add('hidden');
+                            }
+                            
+                            // 清除卡片选中状态
+                            if (decisionCard) {
+                                decisionCard.classList.remove('selected');
+                            }
+                            if (tasksCard) {
+                                tasksCard.classList.remove('selected');
+                            }
+                            
+                            // 清除sessionStorage中的选中状态
+                            sessionStorage.removeItem('activeCard');
+                        });
+                    }
+                });
+            }
+            
+            // 添加非卡片按钮事件监听器
+            addNonCardButtonListeners();
+
+            // 添加滚动事件处理，确保悬浮按钮在指定区域内
+            window.addEventListener('scroll', function() {
+                if (floatingButtons && !floatingButtons.classList.contains('hidden')) {
+                    const contentContainer = document.getElementById('contentContainer');
+                    if (contentContainer) {
+                        const containerRect = contentContainer.getBoundingClientRect();
+                        const buttonRect = floatingButtons.getBoundingClientRect();
+                        
+                        // 确保悬浮按钮在内容区域内
+                        if (buttonRect.top < containerRect.top || buttonRect.bottom > containerRect.bottom) {
+                            floatingButtons.classList.add('hidden');
+                        }
+                    }
+                }
+            });
+            
+            // 防重复点击机制 - 跟踪当前是否正在处理导航请求
+            let isNavigating = false;
+
+            // 添加个人中心按钮点击事件监听器
+            const profileButton = document.getElementById('nav-profile');
+            if (profileButton) {
+                profileButton.addEventListener('click', function() {
+                    if (isNavigating) return;
+                    isNavigating = true;
+                    
+                    // 添加平滑过渡效果
+                    this.style.opacity = '0.7';
+                    setTimeout(() => {
+                        navigateTo('profile.html');
+                        this.style.opacity = '1';
+                        isNavigating = false;
+                    }, 150);
+                });
+            }
+            
+            // 添加通知中心按钮点击事件监听器
+            const notificationsButton = document.getElementById('nav-notifications');
+            if (notificationsButton) {
+                notificationsButton.addEventListener('click', function() {
+                    if (isNavigating) return;
+                    isNavigating = true;
+                    
+                    // 添加平滑过渡效果
+                    this.style.opacity = '0.7';
+                    setTimeout(() => {
+                        navigateTo('notifications.html');
+                        this.style.opacity = '1';
+                        isNavigating = false;
+                    }, 150);
+                });
+            }
+
+            // 检查是否有任务评价数据需要加载
+            loadTaskEvaluationData();
+        };
+    </script>
+
+</body>
+</html>
